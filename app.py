@@ -1,6 +1,5 @@
 import os
 import re
-import time
 import unicodedata
 
 import streamlit as st
@@ -82,7 +81,6 @@ def get_driver():
     for arg in argumentos:
         opts.add_argument(arg)
 
-    # Procura o Chromium instalado pelo packages.txt
     for caminho in [
         "/usr/bin/chromium",
         "/usr/bin/chromium-browser"
@@ -91,7 +89,6 @@ def get_driver():
             opts.binary_location = caminho
             break
 
-    # Procura o ChromeDriver instalado pelo packages.txt
     for caminho in [
         "/usr/bin/chromedriver",
         "/usr/lib/chromium/chromedriver"
@@ -171,24 +168,15 @@ def selecionar_cidade(
             cidade.value;
 
         campoVisivel.dispatchEvent(
-            new Event(
-                "input",
-                {bubbles: true}
-            )
+            new Event("input", {bubbles: true})
         );
 
         campoVisivel.dispatchEvent(
-            new Event(
-                "change",
-                {bubbles: true}
-            )
+            new Event("change", {bubbles: true})
         );
 
         campoOculto.dispatchEvent(
-            new Event(
-                "change",
-                {bubbles: true}
-            )
+            new Event("change", {bubbles: true})
         );
 
         done({
@@ -285,13 +273,9 @@ def cotar(
             40
         )
 
-        # Espera a página carregar
         wait.until(
             EC.presence_of_element_located(
-                (
-                    By.ID,
-                    "input-0"
-                )
+                (By.ID, "input-0")
             )
         )
 
@@ -341,7 +325,6 @@ def cotar(
                 "Botão Roteirizar não encontrado."
             )
 
-        # Espera os KM aparecerem
         wait.until(
             lambda d:
                 (
@@ -349,12 +332,9 @@ def cotar(
                         By.ID,
                         "qtKmRodado"
                     )
-                    .get_attribute(
-                        "value"
-                    )
+                    .get_attribute("value")
                     or ""
-                )
-                .strip()
+                ).strip()
         )
 
         km_texto = (
@@ -363,9 +343,7 @@ def cotar(
                 By.ID,
                 "qtKmRodado"
             )
-            .get_attribute(
-                "value"
-            )
+            .get_attribute("value")
             .strip()
         )
 
@@ -375,41 +353,34 @@ def cotar(
 
         driver.execute_script(
             """
-            const valores =
-                arguments[0];
+            const valores = arguments[0];
 
-            Object.entries(
-                valores
-            )
-            .forEach(
-                ([id, valor]) => {
+            Object.entries(valores)
+            .forEach(([id, valor]) => {
 
-                    const campo =
-                        document
-                        .getElementById(id);
+                const campo =
+                    document.getElementById(id);
 
-                    if (!campo) {
-                        return;
-                    }
-
-                    campo.value =
-                        valor;
-
-                    campo.dispatchEvent(
-                        new Event(
-                            "input",
-                            {bubbles: true}
-                        )
-                    );
-
-                    campo.dispatchEvent(
-                        new Event(
-                            "change",
-                            {bubbles: true}
-                        )
-                    );
+                if (!campo) {
+                    return;
                 }
-            );
+
+                campo.value = valor;
+
+                campo.dispatchEvent(
+                    new Event(
+                        "input",
+                        {bubbles: true}
+                    )
+                );
+
+                campo.dispatchEvent(
+                    new Event(
+                        "change",
+                        {bubbles: true}
+                    )
+                );
+            });
             """,
             {
                 "qtEixos":
@@ -417,17 +388,11 @@ def cotar(
 
                 "prMargemTransportadora":
                     str(margem)
-                    .replace(
-                        ".",
-                        ","
-                    ),
+                    .replace(".", ","),
 
                 "vlPesoTonelada":
                     f"{float(peso):.2f}"
-                    .replace(
-                        ".",
-                        ","
-                    )
+                    .replace(".", ",")
             }
         )
 
@@ -444,88 +409,91 @@ def cotar(
             )
 
         # -------------------------------------------------
-        # ESPERA OS VALORES REAIS DA LINHA GRANEL SÓLIDO
+        # ESPERA E CAPTURA OS VALORES DE GRANEL SÓLIDO
         # -------------------------------------------------
 
         def valores_granel(d):
 
             return d.execute_script(
-                """
+                r"""
                 const linhas =
-                    [
-                        ...document
-                        .querySelectorAll(
-                            "tr"
-                        )
-                    ];
+                    [...document.querySelectorAll("tr")];
 
                 const linha =
-                    linhas.find(
-                        l =>
-                            (
-                                l.innerText ||
-                                ""
-                            )
-                            .includes(
-                                "Granel Sólido"
-                            )
-                    );
+                    linhas.find(l => {
+
+                        const texto =
+                            (l.innerText || "").trim();
+
+                        return (
+                            texto.startsWith("Granel Sólido") &&
+                            (texto.match(/R\$/g) || []).length >= 6
+                        );
+                    });
 
                 if (!linha) {
                     return null;
                 }
 
+                const texto =
+                    (linha.innerText || "").trim();
+
                 const valores =
-                    [
-                        ...linha
-                        .querySelectorAll(
-                            "td,th"
-                        )
-                    ]
-                    .map(
-                        x =>
-                            (
-                                x.innerText ||
-                                ""
-                            )
-                            .trim()
-                    )
-                    .filter(
-                        Boolean
+                    texto.match(
+                        /R\$\s*[0-9\.]+(?:,[0-9]+)?/g
                     );
 
                 if (
-                    valores.length >= 7 &&
-                    valores[3] &&
-                    valores[3].includes("R$") &&
-                    valores[5] &&
-                    valores[5].includes("R$")
+                    !valores ||
+                    valores.length < 6
                 ) {
-                    return valores;
+                    return null;
                 }
 
-                return null;
+                return {
+                    texto: texto,
+                    valores: valores
+                };
                 """
             )
 
-        vals = wait.until(
+        dados_granel = wait.until(
             valores_granel
         )
 
-        if (
-            not vals
-            or len(vals) < 7
-        ):
-            raise RuntimeError(
-                f"Linha inválida: {vals}"
-            )
+        valores = dados_granel[
+            "valores"
+        ]
+
+        # Ordem esperada:
+        # 0 = KM/eixo
+        # 1 = carga/descarga
+        # 2 = frete mínimo total
+        # 3 = frete mínimo por tonelada
+        # 4 = frete empresa total
+        # 5 = frete empresa por tonelada
+
+        frete_minimo = br_to_float(
+            valores[2]
+        )
+
+        frete_minimo_t = br_to_float(
+            valores[3]
+        )
+
+        frete_empresa = br_to_float(
+            valores[4]
+        )
+
+        frete_empresa_t = br_to_float(
+            valores[5]
+        )
 
         # -------------------------------------------------
         # RESULTADO
         # -------------------------------------------------
 
         return {
-
             "origem":
                 origem_resultado[
                     "cidade"
@@ -546,28 +514,19 @@ def cotar(
                 ),
 
             "frete_min":
-                br_to_float(
-                    vals[3]
-                ),
+                frete_minimo,
 
             "frete_min_t":
-                br_to_float(
-                    vals[4]
-                ),
+                frete_minimo_t,
 
             "frete_emp":
-                br_to_float(
-                    vals[5]
-                ),
+                frete_empresa,
 
             "frete_emp_t":
-                br_to_float(
-                    vals[6]
-                )
+                frete_empresa_t
         }
 
     finally:
-
         driver.quit()
 
 
@@ -634,50 +593,36 @@ with tab1:
         0.0
     )
 
-    posto = (
-        forti +
-        frete
-    )
+    posto = forti + frete
 
-    economia = (
-        soja -
-        posto
-    )
+    economia = soja - posto
 
     economia_pct = (
-        economia /
-        soja *
-        100
+        economia / soja * 100
         if soja
         else 0
     )
 
     fator_pb = (
-        pb_s /
-        pb_f
+        pb_s / pb_f
         if pb_f
         else 0
     )
 
     equivalente_pb = (
-        posto *
-        fator_pb
+        posto * fator_pb
     )
 
     a, b, c = st.columns(3)
 
     a.metric(
         "FortiPro posto",
-        br_money(
-            posto
-        )
+        br_money(posto)
     )
 
     b.metric(
         "Economia 1:1",
-        br_money(
-            economia
-        ),
+        br_money(economia),
         f"{economia_pct:.1f}%"
     )
 
@@ -693,9 +638,7 @@ with tab1:
         st.success(
             "Frete calculado na V2 aplicado automaticamente: "
             +
-            br_money(
-                frete
-            )
+            br_money(frete)
             +
             "/t"
         )
@@ -749,14 +692,7 @@ with tab2:
 
         eixos = st.selectbox(
             "Eixos",
-            [
-                3,
-                4,
-                5,
-                6,
-                7,
-                9
-            ],
+            [3, 4, 5, 6, 7, 9],
             index=4
         )
 
