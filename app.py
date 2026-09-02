@@ -79,10 +79,34 @@ def cotar(origem, uf_o, destino, uf_d, eixos, peso, margem):
         if not rd.get("ok"): raise RuntimeError("Destino não encontrado")
 
         if not clicar(d,"roteirizar"): raise RuntimeError("Botão Roteirizar não encontrado")
-        w.until(lambda x: (x.find_element(By.ID,"qtKmRodado").get_attribute("value") or "").strip())
-        km = d.find_element(By.ID,"qtKmRodado").get_attribute("value").strip()
+        def valores_granel(driver):
+    return driver.execute_script("""
+        const linhas = [...document.querySelectorAll("tr")];
 
-        d.execute_script("""
+        const linha = linhas.find(l =>
+            (l.innerText || "").includes("Granel Sólido")
+        );
+
+        if (!linha) return null;
+
+        const valores = [...linha.querySelectorAll("td,th")]
+            .map(x => (x.innerText || "").trim())
+            .filter(Boolean);
+
+        if (
+            valores.length >= 7 &&
+            valores[3] &&
+            valores[3].includes("R$") &&
+            valores[5] &&
+            valores[5].includes("R$")
+        ) {
+            return valores;
+        }
+
+        return null;
+    """)
+
+vals = w.until(valores_granel)
           const v=arguments[0];
           Object.entries(v).forEach(([id,val])=>{
             const e=document.getElementById(id);
