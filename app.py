@@ -49,10 +49,7 @@ def br_to_float(txt):
         .replace(",", ".")
     )
 
-    m = re.search(
-        r"-?\d+(?:\.\d+)?",
-        txt
-    )
+    m = re.search(r"-?\d+(?:\.\d+)?", txt)
 
     return float(m.group()) if m else None
 
@@ -63,6 +60,22 @@ def normalizar(s):
         for c in unicodedata.normalize("NFD", s)
         if unicodedata.category(c) != "Mn"
     ).lower().strip()
+
+
+# =========================================================
+# CAPACIDADE AUTOMÁTICA POR EIXOS
+# =========================================================
+
+CAPACIDADE_EIXOS = {
+    2: 10.0,
+    3: 14.0,
+    4: 17.0,
+    5: 26.0,
+    6: 31.0,
+    7: 36.0,
+    8: 40.0,
+    9: 49.0
+}
 
 
 # =========================================================
@@ -102,9 +115,7 @@ def get_driver():
                 options=opts
             )
 
-    return webdriver.Chrome(
-        options=opts
-    )
+    return webdriver.Chrome(options=opts)
 
 
 # =========================================================
@@ -173,24 +184,15 @@ def selecionar_cidade(
             cidade.value;
 
         campoVisivel.dispatchEvent(
-            new Event(
-                "input",
-                {bubbles: true}
-            )
+            new Event("input", {bubbles: true})
         );
 
         campoVisivel.dispatchEvent(
-            new Event(
-                "change",
-                {bubbles: true}
-            )
+            new Event("change", {bubbles: true})
         );
 
         campoOculto.dispatchEvent(
-            new Event(
-                "change",
-                {bubbles: true}
-            )
+            new Event("change", {bubbles: true})
         );
 
         done({
@@ -220,10 +222,7 @@ def selecionar_cidade(
 # CLICA EM BOTÃO
 # =========================================================
 
-def clicar(
-    driver,
-    texto
-):
+def clicar(driver, texto):
 
     return driver.execute_script(
         """
@@ -277,6 +276,7 @@ def cotar(
     eixos,
     peso,
     margem_empresa,
+    icms,
     margem_seguranca
 ):
 
@@ -369,7 +369,7 @@ def cotar(
         )
 
         # -------------------------------------------------
-        # PREENCHE EIXOS / PESO / MARGEM
+        # PREENCHE EIXOS / PESO / MARGEM / ICMS
         # -------------------------------------------------
 
         driver.execute_script(
@@ -411,6 +411,14 @@ def cotar(
                     str(margem_empresa)
                     .replace(".", ","),
 
+                "prIcms":
+                    (
+                        str(icms)
+                        .replace(".", ",")
+                        if icms > 0
+                        else ""
+                    ),
+
                 "vlPesoTonelada":
                     f"{float(peso):.2f}"
                     .replace(".", ",")
@@ -430,7 +438,7 @@ def cotar(
             )
 
         # -------------------------------------------------
-        # CAPTURA LINHA GRANEL SÓLIDO
+        # CAPTURA GRANEL SÓLIDO
         # -------------------------------------------------
 
         def valores_granel(d):
@@ -491,14 +499,9 @@ def cotar(
             "valores"
         ]
 
-        # Ordem:
-        # 0 = KM/eixo
-        # 1 = carga/descarga
-        # 2 = frete mínimo total
-        # 3 = frete mínimo / t
-        # 4 = frete empresa total
-        # 5 = frete empresa / t
-        # 6 = pedágio
+        # -------------------------------------------------
+        # VALORES MAISFRETE
+        # -------------------------------------------------
 
         frete_minimo = br_to_float(
             valores[2]
@@ -618,7 +621,10 @@ def cotar(
                 frete_final_t,
 
             "frete_final_carga":
-                frete_final_carga
+                frete_final_carga,
+
+            "icms":
+                icms
         }
 
     finally:
@@ -654,85 +660,50 @@ with tab1:
     )
 
     st.caption(
-        "Dados abaixo conforme a NF enviada pela Inpasa."
+        "Dados conforme a NF enviada pela Inpasa."
     )
 
-    f1, f2 = st.columns(2)
+    f1, f2, f3, f4 = st.columns(4)
 
-    with f1:
+    f1.metric(
+        "NCM",
+        "2302.10.00"
+    )
 
-        st.text_input(
-            "NCM",
-            value="2302.10.00",
-            disabled=True
-        )
+    f2.metric(
+        "CST",
+        "090"
+    )
 
-    with f2:
+    f3.metric(
+        "IPI",
+        "0%"
+    )
 
-        st.text_input(
-            "CST",
-            value="090",
-            disabled=True
-        )
+    f4.metric(
+        "PIS/Cofins",
+        "Suspensos*"
+    )
+
+    st.caption(
+        "* Conforme enquadramento legal aplicável às vendas abrangidas pela suspensão."
+    )
 
     st.divider()
 
-    st.markdown(
-        "### Formação fiscal"
-    )
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-
-        forti_fob = st.number_input(
-            "Preço FOB FortiPro (R$/t)",
-            min_value=0.0,
-            value=1445.0,
-            step=10.0
-        )
-
-    with c2:
-
-        impacto_fiscal = st.number_input(
-            "Impacto fiscal adicional (R$/t)",
-            min_value=0.0,
-            value=0.0,
-            step=1.0,
-            help=(
-                "Informe aqui o valor fiscal efetivamente "
-                "adicionado ao preço. Enquanto não tivermos "
-                "a regra exata da NF, não calcularemos "
-                "automaticamente ICMS."
-            )
-        )
-
-    preco_apos_fiscal = (
-        forti_fob +
-        impacto_fiscal
-    )
-
-    st.metric(
-        "FortiPro após impacto fiscal",
-        br_money(
-            preco_apos_fiscal
-        )
+    forti_fob = st.number_input(
+        "Preço FOB FortiPro (R$/t)",
+        min_value=0.0,
+        value=1445.0,
+        step=10.0
     )
 
     st.session_state[
         "forti_fob"
     ] = forti_fob
 
-    st.session_state[
-        "impacto_fiscal"
-    ] = impacto_fiscal
-
-    st.session_state[
-        "preco_apos_fiscal"
-    ] = preco_apos_fiscal
-
     st.info(
-        "NCM confirmado: 2302.10.00 • CST informado na NF: 090."
+        "O ICMS será informado na V2 porque depende da operação e será aplicado na cotação do MaisFrete."
     )
 
 
@@ -774,33 +745,41 @@ with tab2:
             max_chars=2
         ).upper()
 
+    # -----------------------------------------------------
+    # EIXOS AUTOMÁTICOS
+    # -----------------------------------------------------
+
+    eixos = st.selectbox(
+        "Quantidade de eixos",
+        options=[
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+        ],
+        index=5
+    )
+
+    peso = CAPACIDADE_EIXOS[
+        eixos
+    ]
+
+    st.info(
+        f"Capacidade automática considerada: "
+        f"{peso:.0f} toneladas para {eixos} eixos."
+    )
+
+    # -----------------------------------------------------
+    # MARGEM / ICMS / SEGURANÇA
+    # -----------------------------------------------------
+
     a, b, c = st.columns(3)
 
     with a:
-
-        eixos = st.selectbox(
-            "Eixos",
-            [
-                3,
-                4,
-                5,
-                6,
-                7,
-                9
-            ],
-            index=4
-        )
-
-    with b:
-
-        peso = st.number_input(
-            "Peso (t)",
-            min_value=1.0,
-            value=36.0,
-            step=1.0
-        )
-
-    with c:
 
         margem_empresa = st.number_input(
             "Margem empresa MaisFrete (%)",
@@ -810,17 +789,34 @@ with tab2:
             step=1.0
         )
 
-    margem_seguranca = st.number_input(
-        "Margem de segurança (%)",
-        min_value=0.0,
-        max_value=100.0,
-        value=0.0,
-        step=1.0,
-        help=(
-            "Margem adicional aplicada após frete + pedágio "
-            "para aproximar a estimativa do valor real de mercado."
+    with b:
+
+        icms = st.number_input(
+            "ICMS (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=0.0,
+            step=1.0,
+            help=(
+                "Informe a alíquota aplicável "
+                "à operação. Deixe 0 quando "
+                "não houver ICMS a informar."
+            )
         )
-    )
+
+    with c:
+
+        margem_seguranca = st.number_input(
+            "Margem de segurança (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=0.0,
+            step=1.0
+        )
+
+    # -----------------------------------------------------
+    # BOTÃO
+    # -----------------------------------------------------
 
     if st.button(
         "Calcular logística",
@@ -842,6 +838,7 @@ with tab2:
                     eixos,
                     peso,
                     margem_empresa,
+                    icms,
                     margem_seguranca
                 )
 
@@ -971,11 +968,9 @@ with tab2:
         st.caption(
             f"{eixos} eixos • "
             f"{peso:.0f} t • "
-            f"margem MaisFrete "
-            f"{margem_empresa:.0f}% • "
-            f"margem segurança "
-            f"{margem_seguranca:.0f}% • "
-            "Granel Sólido"
+            f"margem MaisFrete {margem_empresa:.0f}% • "
+            f"ICMS {icms:.1f}% • "
+            f"margem segurança {margem_seguranca:.1f}%"
         )
 
 
@@ -986,7 +981,7 @@ with tab2:
 with tab3:
 
     st.subheader(
-        "Comparativo econômico final"
+        "FortiPro posto na propriedade"
     )
 
     forti_fob_final = st.session_state.get(
@@ -994,160 +989,8 @@ with tab3:
         1445.0
     )
 
-    impacto_fiscal_final = st.session_state.get(
-        "impacto_fiscal",
-        0.0
-    )
-
     frete_final_t = st.session_state.get(
         "frete_final_t"
-    )
-
-    # -----------------------------------------------------
-    # DADOS DA SOJA / PROTEÍNA
-    # -----------------------------------------------------
-
-    a, b = st.columns(2)
-
-    with a:
-
-        soja_preco = st.number_input(
-            "Preço do farelo de soja (R$/t)",
-            min_value=0.0,
-            value=2130.0,
-            step=10.0,
-            key="resultado_soja_preco"
-        )
-
-        pb_soja = st.number_input(
-            "PB Farelo de soja (%)",
-            min_value=0.1,
-            value=46.0,
-            step=0.5,
-            key="resultado_pb_soja"
-        )
-
-    with b:
-
-        pb_ddgs = st.number_input(
-            "PB FortiPro / DDGS (%)",
-            min_value=0.1,
-            value=35.0,
-            step=0.5,
-            key="resultado_pb_ddgs"
-        )
-
-    # -----------------------------------------------------
-    # ANÁLISE ECONÔMICA BASE
-    # -----------------------------------------------------
-
-    kg_pb_soja = (
-        pb_soja *
-        10
-    )
-
-    kg_pb_ddgs = (
-        pb_ddgs *
-        10
-    )
-
-    custo_pb_soja = (
-        soja_preco /
-        kg_pb_soja
-        if kg_pb_soja
-        else 0
-    )
-
-    custo_pb_ddgs_base = (
-        forti_fob_final /
-        kg_pb_ddgs
-        if kg_pb_ddgs
-        else 0
-    )
-
-    preco_teto_ddgs = (
-        soja_preco *
-        (
-            pb_ddgs /
-            pb_soja
-        )
-        if pb_soja
-        else 0
-    )
-
-    relacao_ddgs_soja = (
-        forti_fob_final /
-        soja_preco *
-        100
-        if soja_preco
-        else 0
-    )
-
-    diferenca_pb_pct = (
-        (
-            custo_pb_ddgs_base /
-            custo_pb_soja
-            -
-            1
-        ) *
-        100
-        if custo_pb_soja
-        else 0
-    )
-
-    # -----------------------------------------------------
-    # QUATRO INDICADORES PRINCIPAIS
-    # -----------------------------------------------------
-
-    st.markdown(
-        "### Análise econômica"
-    )
-
-    q1, q2, q3, q4 = st.columns(4)
-
-    q1.metric(
-        "Custo/kg PB Soja",
-        br_money(
-            custo_pb_soja
-        )
-    )
-
-    q2.metric(
-        "Custo/kg PB DDGS",
-        br_money(
-            custo_pb_ddgs_base
-        ),
-        f"{diferenca_pb_pct:.1f}% vs soja"
-    )
-
-    q3.metric(
-        "Preço limite DDGS",
-        br_money(
-            preco_teto_ddgs
-        )
-    )
-
-    q4.metric(
-        "Relação DDGS / Soja",
-        f"{relacao_ddgs_soja:.1f}%"
-    )
-
-    st.caption(
-        "Custo/kg PB = preço da tonelada ÷ kg de proteína bruta presentes em 1 tonelada."
-    )
-
-    st.caption(
-        "Preço limite DDGS = preço da soja × (PB DDGS ÷ PB soja)."
-    )
-
-    # -----------------------------------------------------
-    # PREÇO POSTO
-    # -----------------------------------------------------
-
-    st.divider()
-
-    st.markdown(
-        "### FortiPro posto na propriedade"
     )
 
     if frete_final_t is None:
@@ -1158,93 +1001,45 @@ with tab3:
 
     else:
 
-        preco_posto = (
+        forti_posto = (
             forti_fob_final +
-            impacto_fiscal_final +
             frete_final_t
         )
 
-        p1, p2, p3, p4 = st.columns(4)
+        r1, r2, r3 = st.columns(3)
 
-        p1.metric(
+        r1.metric(
             "FOB FortiPro",
             br_money(
                 forti_fob_final
             )
         )
 
-        p2.metric(
-            "Impacto fiscal",
-            br_money(
-                impacto_fiscal_final
-            )
-        )
-
-        p3.metric(
+        r2.metric(
             "Logística / t",
             br_money(
                 frete_final_t
             )
         )
 
-        p4.metric(
+        r3.metric(
             "FortiPro posto",
             br_money(
-                preco_posto
+                forti_posto
             )
         )
 
-        custo_pb_ddgs_posto = (
-            preco_posto /
-            kg_pb_ddgs
-            if kg_pb_ddgs
-            else 0
-        )
-
-        diferenca_posto_pct = (
-            (
-                custo_pb_ddgs_posto /
-                custo_pb_soja
-                -
-                1
-            ) *
-            100
-            if custo_pb_soja
-            else 0
-        )
-
-        st.metric(
-            "Custo/kg PB do FortiPro posto",
-            br_money(
-                custo_pb_ddgs_posto
-            ),
-            f"{diferenca_posto_pct:.1f}% vs soja"
-        )
-
-        st.info(
-            "Preço posto = "
+        st.success(
+            "Preço estimado do FortiPro entregue "
+            "na propriedade: "
             +
             br_money(
-                forti_fob_final
-            )
-            +
-            " FOB + "
-            +
-            br_money(
-                impacto_fiscal_final
-            )
-            +
-            " fiscal + "
-            +
-            br_money(
-                frete_final_t
-            )
-            +
-            " logística = "
-            +
-            br_money(
-                preco_posto
+                forti_posto
             )
             +
             "/t."
+        )
+
+        st.caption(
+            "FortiPro posto = preço FOB + frete logístico final por tonelada."
         )
