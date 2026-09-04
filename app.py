@@ -757,24 +757,51 @@ def cotar(
 # CABEÇALHO
 # =========================================================
 
-st.image(
+st.markdown(
+    """
+    <style>
+    .hero-germinare {
+        width: 100%;
+        height: 260px;
+        border-radius: 18px;
+        background-image:
+            linear-gradient(
+                rgba(0,0,0,0.10),
+                rgba(0,0,0,0.35)
+            ),
+            url("app/static/logo_germinare.jpeg");
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        align-items: flex-end;
+        padding: 32px 40px;
+        margin-bottom: 28px;
+        box-sizing: border-box;
+    }
 
-    "logo_germinare.jpeg",
+    .hero-germinare h1 {
+        color: white;
+        font-size: 42px;
+        margin: 0;
+        font-weight: 700;
+    }
 
-    width=320
+    .hero-germinare p {
+        color: #dddddd;
+        font-size: 17px;
+        margin-top: 8px;
+        margin-bottom: 0;
+    }
+    </style>
 
-)
-
-st.title(
-
-    "FortiPro | Inteligência Comercial"
-
-)
-
-st.caption(
-
-    "Análise fiscal, logística e competitividade econômica."
-
+    <div class="hero-germinare">
+        <div>
+            <h1>FortiPro | Inteligência Comercial</h1>
+            <p>Análise fiscal, logística e competitividade econômica.</p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
 # =========================================================
