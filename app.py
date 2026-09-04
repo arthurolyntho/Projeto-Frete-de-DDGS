@@ -605,10 +605,6 @@ def cotar(
         ]
 
 
-        # =================================================
-        # VALORES RETORNADOS
-        # =================================================
-
         frete_minimo = br_to_float(
             valores[2]
         )
@@ -630,10 +626,6 @@ def cotar(
         )
 
 
-        # =================================================
-        # PEDÁGIO / TONELADA
-        # =================================================
-
         pedagio_t = (
             pedagio_total /
             float(peso)
@@ -642,19 +634,11 @@ def cotar(
         )
 
 
-        # =================================================
-        # FRETE + PEDÁGIO
-        # =================================================
-
         frete_base_t = (
             frete_empresa_t +
             pedagio_t
         )
 
-
-        # =================================================
-        # MARGEM DE SEGURANÇA
-        # =================================================
 
         margem_seguranca_t = (
             frete_base_t *
@@ -664,10 +648,6 @@ def cotar(
             )
         )
 
-
-        # =================================================
-        # FRETE FINAL
-        # =================================================
 
         frete_final_t = (
             frete_base_t +
@@ -679,10 +659,6 @@ def cotar(
             float(peso)
         )
 
-
-        # =================================================
-        # RETORNO
-        # =================================================
 
         return {
 
@@ -773,66 +749,61 @@ imagem_banner = imagem_base64(
 
 st.markdown(
     f"""
-    <style>
+<style>
 
-    .hero-germinare {{
-        width: 100%;
-        height: 280px;
-        border-radius: 18px;
+.hero-germinare {{
+    width: 100%;
+    height: 280px;
+    border-radius: 18px;
 
-        background-image:
-            linear-gradient(
-                rgba(0, 0, 0, 0.08),
-                rgba(0, 0, 0, 0.55)
-            ),
-            url("data:image/jpeg;base64,{imagem_banner}");
+    background-image:
+        linear-gradient(
+            rgba(0, 0, 0, 0.15),
+            rgba(0, 0, 0, 0.55)
+        ),
+        url("data:image/jpeg;base64,{imagem_banner}");
 
-        background-size: cover;
-        background-position: center;
+    background-size: cover;
+    background-position: center;
 
-        display: flex;
-        align-items: flex-end;
+    display: flex;
+    align-items: flex-end;
 
-        padding: 35px 40px;
-        margin-bottom: 28px;
+    padding: 36px 42px;
+    margin-bottom: 28px;
 
-        box-sizing: border-box;
-        overflow: hidden;
-    }}
+    box-sizing: border-box;
+    overflow: hidden;
+}}
 
-    .hero-germinare h1 {{
-        color: white;
-        font-size: 42px;
-        line-height: 1.1;
-        margin: 0;
-        font-weight: 700;
-    }}
+.hero-conteudo {{
+    max-width: 800px;
+}}
 
-    .hero-germinare p {{
-        color: #e5e5e5;
-        font-size: 17px;
-        margin-top: 10px;
-        margin-bottom: 0;
-    }}
+.hero-germinare h1 {{
+    color: white;
+    font-size: 42px;
+    line-height: 1.1;
+    margin: 0;
+    font-weight: 700;
+}}
 
-    </style>
+.hero-germinare p {{
+    color: #e5e5e5;
+    font-size: 17px;
+    margin-top: 10px;
+    margin-bottom: 0;
+}}
 
-    <div class="hero-germinare">
+</style>
 
-        <div>
-
-            <h1>
-                FortiPro | Inteligência Comercial
-            </h1>
-
-            <p>
-                Análise fiscal, logística e competitividade econômica.
-            </p>
-
-        </div>
-
-    </div>
-    """,
+<div class="hero-germinare">
+<div class="hero-conteudo">
+<h1>FortiPro | Inteligência Comercial</h1>
+<p>Análise fiscal, logística e competitividade econômica.</p>
+</div>
+</div>
+""",
     unsafe_allow_html=True
 )
 
@@ -916,10 +887,6 @@ with tab2:
     )
 
 
-    # =====================================================
-    # ORIGEM E DESTINO
-    # =====================================================
-
     c1, c2 = st.columns(
         2
     )
@@ -938,10 +905,6 @@ with tab2:
             value="Viçosa"
         )
 
-
-    # =====================================================
-    # EIXOS
-    # =====================================================
 
     eixos = st.selectbox(
         "Quantidade de eixos",
@@ -970,10 +933,6 @@ with tab2:
         f"{eixos} eixos."
     )
 
-
-    # =====================================================
-    # PARÂMETROS
-    # =====================================================
 
     a, b, c = st.columns(
         3
@@ -1018,10 +977,6 @@ with tab2:
             )
         )
 
-
-    # =====================================================
-    # CALCULAR
-    # =====================================================
 
     if st.button(
         "Calcular logística",
@@ -1080,10 +1035,6 @@ with tab2:
                     )
 
 
-    # =====================================================
-    # RESULTADO DA LOGÍSTICA
-    # =====================================================
-
     resultado = st.session_state.get(
         "resultado_logistica"
     )
@@ -1109,27 +1060,21 @@ with tab2:
         x2.metric(
             "Frete mínimo",
             br_money(
-                resultado[
-                    "frete_min"
-                ]
+                resultado["frete_min"]
             )
         )
 
         x3.metric(
             "Frete empresa",
             br_money(
-                resultado[
-                    "frete_emp"
-                ]
+                resultado["frete_emp"]
             )
         )
 
         x4.metric(
             "Frete empresa / t",
             br_money(
-                resultado[
-                    "frete_emp_t"
-                ]
+                resultado["frete_emp_t"]
             )
         )
 
@@ -1141,27 +1086,21 @@ with tab2:
         y1.metric(
             "Pedágio",
             br_money(
-                resultado[
-                    "pedagio_total"
-                ]
+                resultado["pedagio_total"]
             )
         )
 
         y2.metric(
             "Pedágio / t",
             br_money(
-                resultado[
-                    "pedagio_t"
-                ]
+                resultado["pedagio_t"]
             )
         )
 
         y3.metric(
             "Frete + pedágio / t",
             br_money(
-                resultado[
-                    "frete_base_t"
-                ]
+                resultado["frete_base_t"]
             )
         )
 
@@ -1173,27 +1112,21 @@ with tab2:
         z1.metric(
             "Margem segurança / t",
             br_money(
-                resultado[
-                    "margem_seguranca_t"
-                ]
+                resultado["margem_seguranca_t"]
             )
         )
 
         z2.metric(
             "Frete final / t",
             br_money(
-                resultado[
-                    "frete_final_t"
-                ]
+                resultado["frete_final_t"]
             )
         )
 
         z3.metric(
             "Frete final da carga",
             br_money(
-                resultado[
-                    "frete_final_carga"
-                ]
+                resultado["frete_final_carga"]
             )
         )
 
@@ -1221,22 +1154,12 @@ with tab3:
         "frete_final_t"
     )
 
-
-    # =====================================================
-    # SEM FRETE CALCULADO
-    # =====================================================
-
     if frete_final_t is None:
 
         st.warning(
             "Calcule primeiro a logística na V2 "
             "para obter os preços postos."
         )
-
-
-    # =====================================================
-    # COM FRETE CALCULADO
-    # =====================================================
 
     else:
 
@@ -1245,19 +1168,9 @@ with tab3:
             "ao FortiPro e ao farelo de soja."
         )
 
-
-        # =================================================
-        # PREÇOS E PB
-        # =================================================
-
         c1, c2 = st.columns(
             2
         )
-
-
-        # -------------------------------------------------
-        # FORTIPRO
-        # -------------------------------------------------
 
         with c1:
 
@@ -1281,11 +1194,6 @@ with tab3:
                 step=0.5,
                 key="pb_forti_resultado"
             )
-
-
-        # -------------------------------------------------
-        # FARELO DE SOJA
-        # -------------------------------------------------
 
         with c2:
 
@@ -1311,10 +1219,6 @@ with tab3:
             )
 
 
-        # =================================================
-        # PREÇOS POSTOS
-        # =================================================
-
         forti_posto = (
             preco_forti +
             frete_final_t
@@ -1339,10 +1243,6 @@ with tab3:
         )
 
 
-        # =================================================
-        # KG DE PROTEÍNA POR TONELADA
-        # =================================================
-
         kg_pb_forti = (
             pb_forti *
             10
@@ -1353,10 +1253,6 @@ with tab3:
             10
         )
 
-
-        # =================================================
-        # CUSTO POR KG DE PROTEÍNA BRUTA
-        # =================================================
 
         custo_pb_forti = (
             forti_posto /
@@ -1373,10 +1269,6 @@ with tab3:
         )
 
 
-        # =================================================
-        # DIFERENÇA PERCENTUAL DA PROTEÍNA
-        # =================================================
-
         diferenca_pct = (
             (
                 custo_pb_forti /
@@ -1390,10 +1282,6 @@ with tab3:
             else 0.0
         )
 
-
-        # =================================================
-        # PREÇOS POSTOS
-        # =================================================
 
         st.divider()
 
@@ -1425,11 +1313,6 @@ with tab3:
                 soja_posto
             )
         )
-
-
-        # =================================================
-        # DIFERENÇA DE PREÇO POSTO
-        # =================================================
 
         if diferenca_preco_posto > 0:
 
@@ -1467,10 +1350,6 @@ with tab3:
         )
 
 
-        # =================================================
-        # CUSTO DA PROTEÍNA
-        # =================================================
-
         st.divider()
 
         st.markdown(
@@ -1495,10 +1374,6 @@ with tab3:
             )
         )
 
-
-        # =================================================
-        # RESULTADO COMERCIAL
-        # =================================================
 
         st.divider()
 
@@ -1531,15 +1406,12 @@ with tab3:
                 "o mesmo custo por kg de proteína bruta."
             )
 
+
         st.caption(
             "Custo/kg PB = preço posto da tonelada ÷ "
             "quantidade de proteína bruta presente em 1 tonelada."
         )
 
-
-        # =================================================
-        # ECONOMIA POR EQUIVALÊNCIA DE PROTEÍNA BRUTA
-        # =================================================
 
         st.divider()
 
@@ -1556,10 +1428,6 @@ with tab3:
         )
 
 
-        # =================================================
-        # FATOR DE EQUIVALÊNCIA
-        # =================================================
-
         fator_equivalencia = (
             pb_soja /
             pb_forti
@@ -1573,10 +1441,6 @@ with tab3:
         )
 
 
-        # =================================================
-        # CUSTOS TOTAIS
-        # =================================================
-
         custo_total_soja = (
             quantidade_soja *
             soja_posto
@@ -1587,10 +1451,6 @@ with tab3:
             forti_posto
         )
 
-
-        # =================================================
-        # ECONOMIA
-        # =================================================
 
         economia_total = (
             custo_total_soja -
@@ -1606,10 +1466,6 @@ with tab3:
         )
 
 
-        # =================================================
-        # EQUIVALÊNCIA
-        # =================================================
-
         st.info(
             f"{quantidade_soja:.2f} t de farelo de soja "
             f"({pb_soja:.1f}% PB) fornecem a mesma quantidade "
@@ -1618,10 +1474,6 @@ with tab3:
             f"({pb_forti:.1f}% PB)."
         )
 
-
-        # =================================================
-        # RESULTADOS DA EQUIVALÊNCIA
-        # =================================================
 
         e1, e2, e3 = st.columns(
             3
@@ -1642,10 +1494,6 @@ with tab3:
         )
 
 
-        # =================================================
-        # SE FORTIPRO FOR MAIS BARATO
-        # =================================================
-
         if economia_total >= 0:
 
             e3.metric(
@@ -1664,11 +1512,6 @@ with tab3:
                 f"A economia estimada seria de "
                 f"{br_money(economia_total)}."
             )
-
-
-        # =================================================
-        # SE FORTIPRO FOR MAIS CARO
-        # =================================================
 
         else:
 
@@ -1715,6 +1558,7 @@ with tab3:
             if forti_posto
             else 0.0
         )
+
 
         m1, m2, m3 = st.columns(
             3
@@ -1783,10 +1627,6 @@ with tab3:
                 "com o farelo de soja em custo por kg de proteína bruta."
             )
 
-
-        # =================================================
-        # AVISO TÉCNICO
-        # =================================================
 
         st.caption(
             "As comparações consideram exclusivamente proteína bruta (PB). "
