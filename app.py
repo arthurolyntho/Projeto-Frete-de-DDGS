@@ -757,14 +757,25 @@ def cotar(
 # CABEÇALHO
 # =========================================================
 
+st.image(
+
+    "logo_germinare.jpeg",
+
+    width=320
+
+)
+
 st.title(
-    "FortiPro | Formação de preço"
+
+    "FortiPro | Inteligência Comercial"
+
 )
 
 st.caption(
-    "Ferramenta para análise fiscal, logística e comparação econômica do FortiPro."
-)
 
+    "Análise fiscal, logística e competitividade econômica."
+
+)
 
 # =========================================================
 # ABAS
