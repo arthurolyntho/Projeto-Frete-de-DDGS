@@ -12,14 +12,33 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-URL = "https://consulta.maisfrete.com.br/exe_consulta_frete_minimo.php"
+# =========================================================
+# CONFIGURAÇÕES
+# =========================================================
 
+URL = "https://consulta.maisfrete.com.br/exe_consulta_frete_minimo.php"
 
 st.set_page_config(
     page_title="FortiPro | Preço Posto",
     page_icon="🚚",
     layout="wide"
 )
+
+
+# =========================================================
+# CAPACIDADE AUTOMÁTICA POR EIXOS
+# =========================================================
+
+CAPACIDADE_EIXOS = {
+    2: 10.0,
+    3: 14.0,
+    4: 17.0,
+    5: 26.0,
+    6: 31.0,
+    7: 36.0,
+    8: 40.0,
+    9: 49.0
+}
 
 
 # =========================================================
@@ -45,7 +64,8 @@ def br_to_float(txt):
         return None
 
     txt = (
-        txt.replace("R$", "")
+        txt
+        .replace("R$", "")
         .strip()
         .replace(".", "")
         .replace(",", ".")
@@ -56,9 +76,7 @@ def br_to_float(txt):
         txt
     )
 
-    return float(
-        m.group()
-    ) if m else None
+    return float(m.group()) if m else None
 
 
 def normalizar(s):
@@ -71,22 +89,6 @@ def normalizar(s):
         )
         if unicodedata.category(c) != "Mn"
     ).lower().strip()
-
-
-# =========================================================
-# CAPACIDADE AUTOMÁTICA POR EIXOS
-# =========================================================
-
-CAPACIDADE_EIXOS = {
-    2: 10.0,
-    3: 14.0,
-    4: 17.0,
-    5: 26.0,
-    6: 31.0,
-    7: 36.0,
-    8: 40.0,
-    9: 49.0
-}
 
 
 # =========================================================
@@ -114,9 +116,7 @@ def get_driver():
     ]:
 
         if os.path.exists(caminho):
-
             opts.binary_location = caminho
-
             break
 
     for caminho in [
@@ -137,7 +137,7 @@ def get_driver():
 
 
 # =========================================================
-# BUSCA A CIDADE E DESCOBRE A UF AUTOMATICAMENTE
+# BUSCA CIDADE E IDENTIFICA UF AUTOMATICAMENTE
 # =========================================================
 
 def selecionar_cidade_automatica(
@@ -180,11 +180,7 @@ def selecionar_cidade_automatica(
     .then(r => r.json())
     .then(dados => {
 
-        const buscaLimpa =
-            limpar(busca);
-
-        // Primeiro tenta achar correspondência exata
-        // do nome antes da "/ UF".
+        const buscaLimpa = limpar(busca);
 
         let cidade = dados.find(item => {
 
@@ -200,9 +196,6 @@ def selecionar_cidade_automatica(
                 limpar(nomeCidade) === buscaLimpa
             );
         });
-
-        // Se não encontrar exata,
-        // usa o primeiro resultado do MaisFrete.
 
         if (!cidade && dados.length > 0) {
             cidade = dados[0];
@@ -378,9 +371,10 @@ def cotar(
             )
         )
 
-        # -------------------------------------------------
-        # ORIGEM + UF AUTOMÁTICA
-        # -------------------------------------------------
+
+        # =================================================
+        # ORIGEM
+        # =================================================
 
         origem_resultado = (
             selecionar_cidade_automatica(
@@ -391,17 +385,16 @@ def cotar(
             )
         )
 
-        if not origem_resultado.get(
-            "ok"
-        ):
+        if not origem_resultado.get("ok"):
 
             raise RuntimeError(
                 "Origem não encontrada."
             )
 
-        # -------------------------------------------------
-        # DESTINO + UF AUTOMÁTICA
-        # -------------------------------------------------
+
+        # =================================================
+        # DESTINO
+        # =================================================
 
         destino_resultado = (
             selecionar_cidade_automatica(
@@ -412,17 +405,16 @@ def cotar(
             )
         )
 
-        if not destino_resultado.get(
-            "ok"
-        ):
+        if not destino_resultado.get("ok"):
 
             raise RuntimeError(
                 "Destino não encontrado."
             )
 
-        # -------------------------------------------------
+
+        # =================================================
         # ROTEIRIZAÇÃO
-        # -------------------------------------------------
+        # =================================================
 
         if not clicar(
             driver,
@@ -440,9 +432,7 @@ def cotar(
                         By.ID,
                         "qtKmRodado"
                     )
-                    .get_attribute(
-                        "value"
-                    )
+                    .get_attribute("value")
                     or ""
                 ).strip()
         )
@@ -453,56 +443,48 @@ def cotar(
                 By.ID,
                 "qtKmRodado"
             )
-            .get_attribute(
-                "value"
-            )
+            .get_attribute("value")
             .strip()
         )
 
-        # -------------------------------------------------
-        # EIXOS / PESO / MARGEM / ICMS
-        # -------------------------------------------------
+
+        # =================================================
+        # PREENCHE PARÂMETROS
+        # =================================================
 
         driver.execute_script(
             """
-            const valores =
-                arguments[0];
+            const valores = arguments[0];
 
-            Object.entries(
-                valores
-            )
-            .forEach(
-                ([id, valor]) => {
+            Object.entries(valores)
+            .forEach(([id, valor]) => {
 
-                    const campo =
-                        document.getElementById(
-                            id
-                        );
+                const campo =
+                    document.getElementById(id);
 
-                    if (!campo) {
-                        return;
-                    }
-
-                    campo.value =
-                        valor;
-
-                    campo.dispatchEvent(
-                        new Event(
-                            "input",
-                            {bubbles: true}
-                        )
-                    );
-
-                    campo.dispatchEvent(
-                        new Event(
-                            "change",
-                            {bubbles: true}
-                        )
-                    );
+                if (!campo) {
+                    return;
                 }
-            );
+
+                campo.value = valor;
+
+                campo.dispatchEvent(
+                    new Event(
+                        "input",
+                        {bubbles: true}
+                    )
+                );
+
+                campo.dispatchEvent(
+                    new Event(
+                        "change",
+                        {bubbles: true}
+                    )
+                );
+            });
             """,
             {
+
                 "qtEixos":
                     str(eixos),
 
@@ -534,9 +516,10 @@ def cotar(
             }
         )
 
-        # -------------------------------------------------
+
+        # =================================================
         # CALCULAR
-        # -------------------------------------------------
+        # =================================================
 
         if not clicar(
             driver,
@@ -547,30 +530,23 @@ def cotar(
                 "Botão Calcular não encontrado."
             )
 
-        # -------------------------------------------------
-        # CAPTURA GRANEL SÓLIDO
-        # -------------------------------------------------
+
+        # =================================================
+        # CAPTURA LINHA GRANEL SÓLIDO
+        # =================================================
 
         def valores_granel(d):
 
             return d.execute_script(
                 r"""
                 const linhas =
-                    [
-                        ...document
-                        .querySelectorAll(
-                            "tr"
-                        )
-                    ];
+                    [...document.querySelectorAll("tr")];
 
                 const linha =
                     linhas.find(l => {
 
                         const texto =
-                            (
-                                l.innerText ||
-                                ""
-                            ).trim();
+                            (l.innerText || "").trim();
 
                         return (
                             texto.startsWith(
@@ -578,11 +554,8 @@ def cotar(
                             )
                             &&
                             (
-                                texto.match(
-                                    /R\$/g
-                                )
-                                ||
-                                []
+                                texto.match(/R\$/g)
+                                || []
                             ).length >= 7
                         );
                     });
@@ -592,10 +565,7 @@ def cotar(
                 }
 
                 const texto =
-                    (
-                        linha.innerText ||
-                        ""
-                    ).trim();
+                    (linha.innerText || "").trim();
 
                 const valores =
                     texto.match(
@@ -624,9 +594,18 @@ def cotar(
             "valores"
         ]
 
-        # -------------------------------------------------
-        # VALORES MAISFRETE
-        # -------------------------------------------------
+
+        # =================================================
+        # VALORES RETORNADOS
+        # =================================================
+
+        # 0 = KM por eixo
+        # 1 = carga/descarga
+        # 2 = frete mínimo total
+        # 3 = frete mínimo / t
+        # 4 = frete empresa total
+        # 5 = frete empresa / t
+        # 6 = pedágio
 
         frete_minimo = br_to_float(
             valores[2]
@@ -648,9 +627,10 @@ def cotar(
             valores[6]
         )
 
-        # -------------------------------------------------
-        # PEDÁGIO / TONELADA
-        # -------------------------------------------------
+
+        # =================================================
+        # PEDÁGIO POR TONELADA
+        # =================================================
 
         pedagio_t = (
             pedagio_total /
@@ -659,18 +639,20 @@ def cotar(
             else 0.0
         )
 
-        # -------------------------------------------------
+
+        # =================================================
         # FRETE + PEDÁGIO
-        # -------------------------------------------------
+        # =================================================
 
         frete_base_t = (
             frete_empresa_t +
             pedagio_t
         )
 
-        # -------------------------------------------------
+
+        # =================================================
         # MARGEM DE SEGURANÇA
-        # -------------------------------------------------
+        # =================================================
 
         margem_seguranca_t = (
             frete_base_t *
@@ -680,9 +662,10 @@ def cotar(
             )
         )
 
-        # -------------------------------------------------
+
+        # =================================================
         # FRETE FINAL
-        # -------------------------------------------------
+        # =================================================
 
         frete_final_t = (
             frete_base_t +
@@ -694,9 +677,10 @@ def cotar(
             float(peso)
         )
 
-        # -------------------------------------------------
-        # RESULTADO
-        # -------------------------------------------------
+
+        # =================================================
+        # RETORNO
+        # =================================================
 
         return {
 
@@ -763,7 +747,13 @@ def cotar(
                 frete_final_carga,
 
             "icms":
-                icms
+                icms,
+
+            "eixos":
+                eixos,
+
+            "peso":
+                peso
         }
 
     finally:
@@ -772,13 +762,21 @@ def cotar(
 
 
 # =========================================================
-# TÍTULO / ABAS
+# CABEÇALHO
 # =========================================================
 
 st.title(
     "FortiPro | Formação de preço"
 )
 
+st.caption(
+    "Ferramenta para análise fiscal, logística e comparação econômica do FortiPro."
+)
+
+
+# =========================================================
+# ABAS
+# =========================================================
 
 tab1, tab2, tab3 = st.tabs(
     [
@@ -800,7 +798,7 @@ with tab1:
     )
 
     st.caption(
-        "Dados conforme a NF enviada pela Inpasa."
+        "Dados conforme a documentação fiscal analisada do produto."
     )
 
     f1, f2, f3, f4 = st.columns(
@@ -828,24 +826,14 @@ with tab1:
     )
 
     st.caption(
-        "* Conforme enquadramento legal aplicável à operação."
+        "* Conforme o enquadramento legal aplicável à operação."
     )
 
     st.divider()
 
-    forti_fob = st.number_input(
-        "Preço FOB FortiPro (R$/t)",
-        min_value=0.0,
-        value=1445.0,
-        step=10.0
-    )
-
-    st.session_state[
-        "forti_fob"
-    ] = forti_fob
-
     st.info(
-        "O ICMS é informado na V2 porque depende da operação de transporte."
+        "O ICMS não é fixado nesta aba. "
+        "Ele é informado na V2 conforme a operação logística analisada."
     )
 
 
@@ -860,8 +848,14 @@ with tab2:
     )
 
     st.caption(
-        "Digite somente as cidades. O estado será identificado automaticamente pelo MaisFrete."
+        "Digite somente as cidades. "
+        "A UF será identificada automaticamente pelo MaisFrete."
     )
+
+
+    # =====================================================
+    # ORIGEM E DESTINO
+    # =====================================================
 
     c1, c2 = st.columns(
         2
@@ -871,19 +865,20 @@ with tab2:
 
         origem = st.text_input(
             "Cidade de origem",
-            "Uberlândia"
+            value="Uberlândia"
         )
 
     with c2:
 
         destino = st.text_input(
             "Cidade de destino",
-            "Viçosa"
+            value="Viçosa"
         )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # EIXOS
-    # -----------------------------------------------------
+    # =====================================================
 
     eixos = st.selectbox(
         "Quantidade de eixos",
@@ -908,12 +903,14 @@ with tab2:
 
     st.info(
         f"Capacidade considerada automaticamente: "
-        f"{peso:.0f} toneladas."
+        f"{peso:.0f} toneladas para um veículo de "
+        f"{eixos} eixos."
     )
 
-    # -----------------------------------------------------
-    # AJUSTES
-    # -----------------------------------------------------
+
+    # =====================================================
+    # PARÂMETROS
+    # =====================================================
 
     a, b, c = st.columns(
         3
@@ -938,8 +935,8 @@ with tab2:
             value=0.0,
             step=1.0,
             help=(
-                "Informe conforme a operação. "
-                "Deixe 0 quando não aplicável."
+                "Informe a alíquota utilizada "
+                "na operação de transporte."
             )
         )
 
@@ -950,12 +947,18 @@ with tab2:
             min_value=0.0,
             max_value=100.0,
             value=0.0,
-            step=1.0
+            step=1.0,
+            help=(
+                "Margem adicional aplicada ao "
+                "frete + pedágio para aproximar "
+                "o valor estimado da realidade de mercado."
+            )
         )
 
-    # -----------------------------------------------------
-    # BOTÃO
-    # -----------------------------------------------------
+
+    # =====================================================
+    # CALCULAR
+    # =====================================================
 
     if st.button(
         "Calcular logística",
@@ -963,56 +966,77 @@ with tab2:
         use_container_width=True
     ):
 
-        with st.spinner(
-            "Consultando MaisFrete..."
-        ):
+        if not origem.strip():
 
-            try:
+            st.error(
+                "Informe a cidade de origem."
+            )
 
-                resultado = cotar(
-                    origem,
-                    destino,
-                    eixos,
-                    peso,
-                    margem_empresa,
-                    icms,
-                    margem_seguranca
-                )
+        elif not destino.strip():
 
-                st.session_state[
-                    "resultado_logistica"
-                ] = resultado
+            st.error(
+                "Informe a cidade de destino."
+            )
 
-                st.session_state[
-                    "frete_final_t"
-                ] = resultado[
-                    "frete_final_t"
-                ]
+        else:
 
-            except Exception as erro:
+            with st.spinner(
+                "Consultando MaisFrete..."
+            ):
 
-                st.error(
-                    "Falha na automação do MaisFrete."
-                )
+                try:
 
-                st.exception(
-                    erro
-                )
+                    resultado = cotar(
+                        origem,
+                        destino,
+                        eixos,
+                        peso,
+                        margem_empresa,
+                        icms,
+                        margem_seguranca
+                    )
+
+                    st.session_state[
+                        "resultado_logistica"
+                    ] = resultado
+
+                    st.session_state[
+                        "frete_final_t"
+                    ] = resultado[
+                        "frete_final_t"
+                    ]
+
+                except Exception as erro:
+
+                    st.error(
+                        "Falha na automação do MaisFrete."
+                    )
+
+                    st.exception(
+                        erro
+                    )
+
+
+    # =====================================================
+    # RESULTADO DA LOGÍSTICA
+    # =====================================================
 
     resultado = st.session_state.get(
         "resultado_logistica"
     )
 
-    # -----------------------------------------------------
-    # RESULTADO LOGÍSTICO
-    # -----------------------------------------------------
-
     if resultado:
+
+        st.divider()
 
         st.success(
             f'{resultado["origem"]} → '
             f'{resultado["destino"]}'
         )
+
+        # -------------------------------------------------
+        # PRIMEIRA LINHA
+        # -------------------------------------------------
 
         x1, x2, x3, x4 = st.columns(
             4
@@ -1050,6 +1074,11 @@ with tab2:
             )
         )
 
+
+        # -------------------------------------------------
+        # SEGUNDA LINHA
+        # -------------------------------------------------
+
         y1, y2, y3 = st.columns(
             3
         )
@@ -1080,6 +1109,11 @@ with tab2:
                 ]
             )
         )
+
+
+        # -------------------------------------------------
+        # TERCEIRA LINHA
+        # -------------------------------------------------
 
         z1, z2, z3 = st.columns(
             3
@@ -1113,13 +1147,12 @@ with tab2:
         )
 
         st.caption(
-            f"{eixos} eixos • "
-            f"{peso:.0f} t • "
-            f"ICMS {icms:.1f}% • "
-            f"margem MaisFrete "
-            f"{margem_empresa:.0f}% • "
-            f"margem segurança "
-            f"{margem_seguranca:.1f}%"
+            f'{resultado["eixos"]} eixos • '
+            f'{resultado["peso"]:.0f} t • '
+            f'ICMS {resultado["icms"]:.1f}% • '
+            f'margem MaisFrete {margem_empresa:.0f}% • '
+            f'margem segurança '
+            f'{resultado["margem_seguranca_pct"]:.1f}%'
         )
 
 
@@ -1130,100 +1163,50 @@ with tab2:
 with tab3:
 
     st.subheader(
-        "FortiPro posto na propriedade"
+        "Comparativo posto na propriedade"
     )
 
-    forti_fob_final = (
-        st.session_state.get(
-            "forti_fob",
-            1445.0
-        )
+    frete_final_t = st.session_state.get(
+        "frete_final_t"
     )
 
-    frete_final_t = (
-        st.session_state.get(
-            "frete_final_t"
-        )
-    )
 
-    # -----------------------------------------------------
-    # AINDA NÃO CALCULOU FRETE
-    # -----------------------------------------------------
+    # =====================================================
+    # SEM FRETE CALCULADO
+    # =====================================================
 
     if frete_final_t is None:
 
         st.warning(
-            "Calcule primeiro a logística na V2 para obter o preço posto na propriedade."
+            "Calcule primeiro a logística na V2 "
+            "para obter os preços postos."
         )
 
-    # -----------------------------------------------------
-    # JÁ POSSUI FRETE
-    # -----------------------------------------------------
+
+    # =====================================================
+    # COM FRETE CALCULADO
+    # =====================================================
 
     else:
 
-        forti_posto = (
-            forti_fob_final +
-            frete_final_t
-        )
-
-        r1, r2, r3 = st.columns(
-            3
-        )
-
-        r1.metric(
-            "FOB FortiPro",
-            br_money(
-                forti_fob_final
-            )
-        )
-
-        r2.metric(
-            "Logística / t",
-            br_money(
-                frete_final_t
-            )
-        )
-
-        r3.metric(
-            "FortiPro posto",
-            br_money(
-                forti_posto
-            )
-        )
-
-        st.success(
-            "Preço estimado do FortiPro entregue "
-            "na propriedade: "
-            +
-            br_money(
-                forti_posto
-            )
-            +
-            "/t."
-        )
-
         st.caption(
-            "FortiPro posto = preço FOB + logística final por tonelada."
+            "O mesmo frete por tonelada é aplicado "
+            "ao FortiPro e ao farelo de soja."
         )
+
 
         # =================================================
-        # COMPARAÇÃO COM FARELO DE SOJA
+        # PREÇOS E PB
         # =================================================
-
-        st.divider()
-
-        st.subheader(
-            "Comparativo de proteína posta"
-        )
-
-        st.caption(
-            "Comparação feita entre os dois produtos já considerados na propriedade."
-        )
 
         c1, c2 = st.columns(
             2
         )
+
+
+        # -------------------------------------------------
+        # FORTIPRO
+        # -------------------------------------------------
 
         with c1:
 
@@ -1231,13 +1214,27 @@ with tab3:
                 "### FortiPro"
             )
 
+            preco_forti = st.number_input(
+                "Preço FortiPro (R$/t)",
+                min_value=0.0,
+                value=1445.0,
+                step=10.0,
+                key="preco_forti_resultado"
+            )
+
             pb_forti = st.number_input(
-                "PB FortiPro (%)",
+                "Proteína bruta FortiPro (%)",
                 min_value=0.1,
                 max_value=100.0,
                 value=35.0,
-                step=0.5
+                step=0.5,
+                key="pb_forti_resultado"
             )
+
+
+        # -------------------------------------------------
+        # FARELO DE SOJA
+        # -------------------------------------------------
 
         with c2:
 
@@ -1245,24 +1242,42 @@ with tab3:
                 "### Farelo de soja"
             )
 
-            soja_posto = st.number_input(
-                "Farelo de soja posto (R$/t)",
+            preco_soja = st.number_input(
+                "Preço Farelo de soja (R$/t)",
                 min_value=0.0,
                 value=2130.0,
-                step=10.0
+                step=10.0,
+                key="preco_soja_resultado"
             )
 
             pb_soja = st.number_input(
-                "PB Farelo de soja (%)",
+                "Proteína bruta Farelo de soja (%)",
                 min_value=0.1,
                 max_value=100.0,
                 value=46.0,
-                step=0.5
+                step=0.5,
+                key="pb_soja_resultado"
             )
 
-        # -------------------------------------------------
-        # KG PB / TONELADA
-        # -------------------------------------------------
+
+        # =================================================
+        # PREÇOS POSTOS
+        # =================================================
+
+        forti_posto = (
+            preco_forti +
+            frete_final_t
+        )
+
+        soja_posto = (
+            preco_soja +
+            frete_final_t
+        )
+
+
+        # =================================================
+        # KG DE PROTEÍNA POR TONELADA
+        # =================================================
 
         kg_pb_forti = (
             pb_forti *
@@ -1274,27 +1289,29 @@ with tab3:
             10
         )
 
-        # -------------------------------------------------
-        # CUSTO / KG PB
-        # -------------------------------------------------
+
+        # =================================================
+        # CUSTO POR KG DE PROTEÍNA BRUTA
+        # =================================================
 
         custo_pb_forti = (
             forti_posto /
             kg_pb_forti
             if kg_pb_forti
-            else 0
+            else 0.0
         )
 
         custo_pb_soja = (
             soja_posto /
             kg_pb_soja
             if kg_pb_soja
-            else 0
+            else 0.0
         )
 
-        # -------------------------------------------------
-        # DIFERENÇA
-        # -------------------------------------------------
+
+        # =================================================
+        # DIFERENÇA PERCENTUAL
+        # =================================================
 
         diferenca_pct = (
             (
@@ -1306,48 +1323,88 @@ with tab3:
             *
             100
             if custo_pb_soja
-            else 0
+            else 0.0
         )
 
-        # -------------------------------------------------
-        # RESULTADOS
-        # -------------------------------------------------
 
-        p1, p2, p3, p4 = st.columns(
-            4
+        # =================================================
+        # PREÇOS POSTOS
+        # =================================================
+
+        st.divider()
+
+        st.markdown(
+            "### Preços postos"
+        )
+
+        p1, p2, p3 = st.columns(
+            3
         )
 
         p1.metric(
+            "Frete aplicado / t",
+            br_money(
+                frete_final_t
+            )
+        )
+
+        p2.metric(
             "FortiPro posto",
             br_money(
                 forti_posto
             )
         )
 
-        p2.metric(
-            "Farelo posto",
+        p3.metric(
+            "Farelo de soja posto",
             br_money(
                 soja_posto
             )
         )
 
-        p3.metric(
+        st.caption(
+            "Preço posto = preço do produto + frete final por tonelada."
+        )
+
+
+        # =================================================
+        # CUSTO DA PROTEÍNA
+        # =================================================
+
+        st.divider()
+
+        st.markdown(
+            "### Custo da proteína bruta"
+        )
+
+        q1, q2 = st.columns(
+            2
+        )
+
+        q1.metric(
             "Custo/kg PB FortiPro",
             br_money(
                 custo_pb_forti
             )
         )
 
-        p4.metric(
-            "Custo/kg PB soja",
+        q2.metric(
+            "Custo/kg PB Farelo de soja",
             br_money(
                 custo_pb_soja
             )
         )
 
-        # -------------------------------------------------
-        # INTERPRETAÇÃO
-        # -------------------------------------------------
+
+        # =================================================
+        # RESULTADO COMERCIAL
+        # =================================================
+
+        st.divider()
+
+        st.markdown(
+            "### Resultado"
+        )
 
         if diferenca_pct < 0:
 
@@ -1355,8 +1412,7 @@ with tab3:
                 f"O FortiPro está "
                 f"{abs(diferenca_pct):.1f}% "
                 "mais barato por kg de proteína bruta "
-                "que o farelo de soja, considerando "
-                "os preços postos informados."
+                "que o farelo de soja."
             )
 
         elif diferenca_pct > 0:
@@ -1365,8 +1421,7 @@ with tab3:
                 f"O FortiPro está "
                 f"{diferenca_pct:.1f}% "
                 "mais caro por kg de proteína bruta "
-                "que o farelo de soja, considerando "
-                "os preços postos informados."
+                "que o farelo de soja."
             )
 
         else:
@@ -1377,5 +1432,6 @@ with tab3:
             )
 
         st.caption(
-            "Custo/kg PB = preço posto da tonelada ÷ quantidade de proteína bruta presente em 1 tonelada."
+            "Custo/kg PB = preço posto da tonelada ÷ "
+            "quantidade de proteína bruta presente em 1 tonelada."
         )
