@@ -348,77 +348,6 @@ def cotar(
         )
 
         # -------------------------------------------------
-        # CAPTURA PEDÁGIO DA ROTA
-        # -------------------------------------------------
-
-        def encontrar_pedagio(d):
-
-            return d.execute_script(
-                r"""
-                const texto =
-                    document.body.innerText || "";
-
-                const linhas =
-                    texto
-                    .split("\n")
-                    .map(x => x.trim())
-                    .filter(Boolean);
-
-                for (
-                    let i = 0;
-                    i < linhas.length;
-                    i++
-                ) {
-
-                    const linha =
-                        linhas[i]
-                        .toLowerCase();
-
-                    if (
-                        linha.includes("pedágio") ||
-                        linha.includes("pedagio")
-                    ) {
-
-                        const trecho =
-                            linhas
-                            .slice(
-                                Math.max(0, i - 1),
-                                i + 4
-                            )
-                            .join(" ");
-
-                        const valores =
-                            trecho.match(
-                                /R\$\s*[0-9\.]+(?:,[0-9]+)?/g
-                            );
-
-                        if (
-                            valores &&
-                            valores.length
-                        ) {
-                            return valores[
-                                valores.length - 1
-                            ];
-                        }
-                    }
-                }
-
-                return null;
-                """
-            )
-
-        pedagio_texto = encontrar_pedagio(
-            driver
-        )
-
-        pedagio_total = br_to_float(
-            pedagio_texto
-        )
-
-        if pedagio_total is None:
-            pedagio_total = 0.0
-
-        # -------------------------------------------------
         # PREENCHE EIXOS / PESO / MARGEM
         # -------------------------------------------------
 
@@ -480,7 +409,7 @@ def cotar(
             )
 
         # -------------------------------------------------
-        # CAPTURA VALORES DO GRANEL SÓLIDO
+        # ESPERA E CAPTURA OS VALORES DE GRANEL SÓLIDO
         # -------------------------------------------------
 
         def valores_granel(d):
@@ -497,13 +426,8 @@ def cotar(
                             (l.innerText || "").trim();
 
                         return (
-                            texto.startsWith(
-                                "Granel Sólido"
-                            ) &&
-                            (
-                                texto.match(/R\$/g)
-                                || []
-                            ).length >= 6
+                            texto.startsWith("Granel Sólido") &&
+                            (texto.match(/R\$/g) || []).length >= 7
                         );
                     });
 
@@ -512,10 +436,7 @@ def cotar(
                 }
 
                 const texto =
-                    (
-                        linha.innerText ||
-                        ""
-                    ).trim();
+                    (linha.innerText || "").trim();
 
                 const valores =
                     texto.match(
@@ -524,7 +445,7 @@ def cotar(
 
                 if (
                     !valores ||
-                    valores.length < 6
+                    valores.length < 7
                 ) {
                     return null;
                 }
@@ -544,9 +465,14 @@ def cotar(
             "valores"
         ]
 
-        # -------------------------------------------------
-        # FRETE MAISFRETE
-        # -------------------------------------------------
+        # Ordem:
+        # 0 = KM/eixo
+        # 1 = carga/descarga
+        # 2 = frete mínimo total
+        # 3 = frete mínimo por tonelada
+        # 4 = frete empresa total
+        # 5 = frete empresa por tonelada
+        # 6 = pedágio total
 
         frete_minimo = br_to_float(
             valores[2]
@@ -564,33 +490,28 @@ def cotar(
             valores[5]
         )
 
+        pedagio_total = br_to_float(
+            valores[6]
+        )
+
         # -------------------------------------------------
-        # PEDÁGIO POR TONELADA
+        # CÁLCULOS FINAIS
         # -------------------------------------------------
 
-        pedagio_por_tonelada = (
-            pedagio_total /
-            float(peso)
+        pedagio_t = (
+            pedagio_total / float(peso)
             if peso
             else 0.0
         )
 
-        # -------------------------------------------------
-        # FRETE FINAL POR TONELADA
-        # -------------------------------------------------
+        frete_final_carga = (
+            frete_empresa +
+            pedagio_total
+        )
 
         frete_final_t = (
             frete_empresa_t +
-            pedagio_por_tonelada
-        )
-
-        # -------------------------------------------------
-        # FRETE FINAL DA CARGA
-        # -------------------------------------------------
-
-        frete_final_total = (
-            frete_empresa +
-            pedagio_total
+            pedagio_t
         )
 
         # -------------------------------------------------
@@ -598,7 +519,6 @@ def cotar(
         # -------------------------------------------------
 
         return {
-
             "origem":
                 origem_resultado[
                     "cidade"
@@ -634,17 +554,16 @@ def cotar(
                 pedagio_total,
 
             "pedagio_t":
-                pedagio_por_tonelada,
+                pedagio_t,
 
-            "frete_final_total":
-                frete_final_total,
+            "frete_final_carga":
+                frete_final_carga,
 
             "frete_final_t":
                 frete_final_t
         }
 
     finally:
-
         driver.quit()
 
 
@@ -706,8 +625,7 @@ with tab1:
             step=0.5
         )
 
-    # Aqui agora entra o FRETE FINAL,
-    # já incluindo pedágio rateado por tonelada.
+    # Agora usa o frete FINAL, já com pedágio
     frete = st.session_state.get(
         "frete_final_t",
         0.0
@@ -737,16 +655,12 @@ with tab1:
 
     a.metric(
         "FortiPro posto",
-        br_money(
-            posto
-        )
+        br_money(posto)
     )
 
     b.metric(
         "Economia 1:1",
-        br_money(
-            economia
-        ),
+        br_money(economia),
         f"{economia_pct:.1f}%"
     )
 
@@ -760,12 +674,9 @@ with tab1:
     if frete:
 
         st.success(
-            "Frete final calculado na V2 "
-            "(frete + pedágio): "
+            "Frete final da V2 aplicado automaticamente: "
             +
-            br_money(
-                frete
-            )
+            br_money(frete)
             +
             "/t"
         )
@@ -819,14 +730,7 @@ with tab2:
 
         eixos = st.selectbox(
             "Eixos",
-            [
-                3,
-                4,
-                5,
-                6,
-                7,
-                9
-            ],
+            [3, 4, 5, 6, 7, 9],
             index=4
         )
 
@@ -875,8 +779,6 @@ with tab2:
                     "resultado"
                 ] = resultado
 
-                # Salva o valor FINAL,
-                # já incluindo pedágio/t
                 st.session_state[
                     "frete_final_t"
                 ] = resultado[
@@ -904,7 +806,7 @@ with tab2:
         )
 
         # -------------------------------------------------
-        # PRIMEIRA LINHA DE RESULTADOS
+        # LINHA 1
         # -------------------------------------------------
 
         x1, x2, x3, x4 = st.columns(4)
@@ -917,69 +819,48 @@ with tab2:
         x2.metric(
             "Frete mínimo",
             br_money(
-                resultado[
-                    "frete_min"
-                ]
+                resultado["frete_min"]
             )
         )
 
         x3.metric(
             "Frete empresa",
             br_money(
-                resultado[
-                    "frete_emp"
-                ]
+                resultado["frete_emp"]
             )
         )
 
         x4.metric(
             "Frete empresa / t",
             br_money(
-                resultado[
-                    "frete_emp_t"
-                ]
+                resultado["frete_emp_t"]
             )
         )
 
         # -------------------------------------------------
-        # SEGUNDA LINHA — PEDÁGIO + RESULTADO FINAL
+        # LINHA 2
         # -------------------------------------------------
 
-        p1, p2, p3, p4 = st.columns(4)
+        y1, y2, y3 = st.columns(3)
 
-        p1.metric(
-            "Pedágio total",
+        y1.metric(
+            "Pedágio",
             br_money(
-                resultado[
-                    "pedagio_total"
-                ]
+                resultado["pedagio_total"]
             )
         )
 
-        p2.metric(
-            "Pedágio / t",
-            br_money(
-                resultado[
-                    "pedagio_t"
-                ]
-            )
-        )
-
-        p3.metric(
+        y2.metric(
             "Frete final da carga",
             br_money(
-                resultado[
-                    "frete_final_total"
-                ]
+                resultado["frete_final_carga"]
             )
         )
 
-        p4.metric(
-            "Frete final / t",
+        y3.metric(
+            "Frete final / t + pedágio",
             br_money(
-                resultado[
-                    "frete_final_t"
-                ]
+                resultado["frete_final_t"]
             )
         )
 
@@ -988,17 +869,6 @@ with tab2:
             f"{peso:.0f} t • "
             f"margem {margem:.0f}% • "
             "Granel Sólido"
-        )
-
-        st.info(
-            "Cálculo do frete final/t: "
-            f'{br_money(resultado["frete_emp_t"])} '
-            "+ "
-            f'{br_money(resultado["pedagio_total"])} '
-            "÷ "
-            f"{peso:.0f} t "
-            "= "
-            f'{br_money(resultado["frete_final_t"])}/t'
         )
 
 
