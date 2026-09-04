@@ -744,7 +744,7 @@ def cotar(
 # =========================================================
 
 imagem_banner = imagem_base64(
-    "logo_germinare-removebg-preview.png"
+    "germinare.jpg"
 )
 
 st.markdown(
