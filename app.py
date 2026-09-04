@@ -27,6 +27,7 @@ st.set_page_config(
 # =========================================================
 
 def br_money(v):
+
     if v is None:
         return "—"
 
@@ -39,6 +40,7 @@ def br_money(v):
 
 
 def br_to_float(txt):
+
     if not txt:
         return None
 
@@ -49,15 +51,24 @@ def br_to_float(txt):
         .replace(",", ".")
     )
 
-    m = re.search(r"-?\d+(?:\.\d+)?", txt)
+    m = re.search(
+        r"-?\d+(?:\.\d+)?",
+        txt
+    )
 
-    return float(m.group()) if m else None
+    return float(
+        m.group()
+    ) if m else None
 
 
 def normalizar(s):
+
     return "".join(
         c
-        for c in unicodedata.normalize("NFD", s)
+        for c in unicodedata.normalize(
+            "NFD",
+            s
+        )
         if unicodedata.category(c) != "Mn"
     ).lower().strip()
 
@@ -101,33 +112,39 @@ def get_driver():
         "/usr/bin/chromium",
         "/usr/bin/chromium-browser"
     ]:
+
         if os.path.exists(caminho):
+
             opts.binary_location = caminho
+
             break
 
     for caminho in [
         "/usr/bin/chromedriver",
         "/usr/lib/chromium/chromedriver"
     ]:
+
         if os.path.exists(caminho):
+
             return webdriver.Chrome(
                 service=Service(caminho),
                 options=opts
             )
 
-    return webdriver.Chrome(options=opts)
+    return webdriver.Chrome(
+        options=opts
+    )
 
 
 # =========================================================
-# BUSCA DE CIDADES
+# BUSCA A CIDADE E DESCOBRE A UF AUTOMATICAMENTE
 # =========================================================
 
-def selecionar_cidade(
+def selecionar_cidade_automatica(
     driver,
     input_id,
     hidden_id,
-    busca,
-    uf
+    busca
 ):
 
     js = r"""
@@ -136,7 +153,13 @@ def selecionar_cidade(
     const inputId = arguments[0];
     const hiddenId = arguments[1];
     const busca = arguments[2];
-    const uf = arguments[3];
+
+    const limpar = texto =>
+        (texto || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
 
     const url =
         "/lib/jaguar/AjaxIframe.php" +
@@ -157,25 +180,69 @@ def selecionar_cidade(
     .then(r => r.json())
     .then(dados => {
 
-        const cidade = dados.find(
-            item =>
-                (item.description || "")
-                .endsWith("/ " + uf)
-        );
+        const buscaLimpa =
+            limpar(busca);
+
+        // Primeiro tenta achar correspondência exata
+        // do nome antes da "/ UF".
+
+        let cidade = dados.find(item => {
+
+            const descricao =
+                item.description || "";
+
+            const nomeCidade =
+                descricao
+                .split("/")[0]
+                .trim();
+
+            return (
+                limpar(nomeCidade) === buscaLimpa
+            );
+        });
+
+        // Se não encontrar exata,
+        // usa o primeiro resultado do MaisFrete.
+
+        if (!cidade && dados.length > 0) {
+            cidade = dados[0];
+        }
 
         if (!cidade) {
+
             done({
                 ok: false,
                 dados: dados
             });
+
             return;
         }
 
+        const descricao =
+            cidade.description || "";
+
+        const partes =
+            descricao.split("/");
+
+        const nomeCidade =
+            partes[0]
+            ? partes[0].trim()
+            : "";
+
+        const uf =
+            partes[1]
+            ? partes[1].trim()
+            : "";
+
         const campoVisivel =
-            document.getElementById(inputId);
+            document.getElementById(
+                inputId
+            );
 
         const campoOculto =
-            document.getElementById(hiddenId);
+            document.getElementById(
+                hiddenId
+            );
 
         campoVisivel.value =
             cidade.description;
@@ -184,20 +251,31 @@ def selecionar_cidade(
             cidade.value;
 
         campoVisivel.dispatchEvent(
-            new Event("input", {bubbles: true})
+            new Event(
+                "input",
+                {bubbles: true}
+            )
         );
 
         campoVisivel.dispatchEvent(
-            new Event("change", {bubbles: true})
+            new Event(
+                "change",
+                {bubbles: true}
+            )
         );
 
         campoOculto.dispatchEvent(
-            new Event("change", {bubbles: true})
+            new Event(
+                "change",
+                {bubbles: true}
+            )
         );
 
         done({
             ok: true,
-            cidade: cidade
+            cidade: cidade,
+            nome: nomeCidade,
+            uf: uf
         });
     })
     .catch(
@@ -213,8 +291,7 @@ def selecionar_cidade(
         js,
         input_id,
         hidden_id,
-        busca,
-        uf
+        busca
     )
 
 
@@ -222,7 +299,10 @@ def selecionar_cidade(
 # CLICA EM BOTÃO
 # =========================================================
 
-def clicar(driver, texto):
+def clicar(
+    driver,
+    texto
+):
 
     return driver.execute_script(
         """
@@ -270,9 +350,7 @@ def clicar(driver, texto):
 
 def cotar(
     origem,
-    uf_o,
     destino,
-    uf_d,
     eixos,
     peso,
     margem_empresa,
@@ -301,35 +379,43 @@ def cotar(
         )
 
         # -------------------------------------------------
-        # ORIGEM
+        # ORIGEM + UF AUTOMÁTICA
         # -------------------------------------------------
 
-        origem_resultado = selecionar_cidade(
-            driver,
-            "input-0",
-            "f_cd_cidade_origem",
-            normalizar(origem),
-            uf_o.upper()
+        origem_resultado = (
+            selecionar_cidade_automatica(
+                driver,
+                "input-0",
+                "f_cd_cidade_origem",
+                normalizar(origem)
+            )
         )
 
-        if not origem_resultado.get("ok"):
+        if not origem_resultado.get(
+            "ok"
+        ):
+
             raise RuntimeError(
                 "Origem não encontrada."
             )
 
         # -------------------------------------------------
-        # DESTINO
+        # DESTINO + UF AUTOMÁTICA
         # -------------------------------------------------
 
-        destino_resultado = selecionar_cidade(
-            driver,
-            "input-1",
-            "f_cd_cidade_destino",
-            normalizar(destino),
-            uf_d.upper()
+        destino_resultado = (
+            selecionar_cidade_automatica(
+                driver,
+                "input-1",
+                "f_cd_cidade_destino",
+                normalizar(destino)
+            )
         )
 
-        if not destino_resultado.get("ok"):
+        if not destino_resultado.get(
+            "ok"
+        ):
+
             raise RuntimeError(
                 "Destino não encontrado."
             )
@@ -342,6 +428,7 @@ def cotar(
             driver,
             "roteirizar"
         ):
+
             raise RuntimeError(
                 "Botão Roteirizar não encontrado."
             )
@@ -353,7 +440,9 @@ def cotar(
                         By.ID,
                         "qtKmRodado"
                     )
-                    .get_attribute("value")
+                    .get_attribute(
+                        "value"
+                    )
                     or ""
                 ).strip()
         )
@@ -364,64 +453,84 @@ def cotar(
                 By.ID,
                 "qtKmRodado"
             )
-            .get_attribute("value")
+            .get_attribute(
+                "value"
+            )
             .strip()
         )
 
         # -------------------------------------------------
-        # PREENCHE EIXOS / PESO / MARGEM / ICMS
+        # EIXOS / PESO / MARGEM / ICMS
         # -------------------------------------------------
 
         driver.execute_script(
             """
-            const valores = arguments[0];
+            const valores =
+                arguments[0];
 
-            Object.entries(valores)
-            .forEach(([id, valor]) => {
+            Object.entries(
+                valores
+            )
+            .forEach(
+                ([id, valor]) => {
 
-                const campo =
-                    document.getElementById(id);
+                    const campo =
+                        document.getElementById(
+                            id
+                        );
 
-                if (!campo) {
-                    return;
+                    if (!campo) {
+                        return;
+                    }
+
+                    campo.value =
+                        valor;
+
+                    campo.dispatchEvent(
+                        new Event(
+                            "input",
+                            {bubbles: true}
+                        )
+                    );
+
+                    campo.dispatchEvent(
+                        new Event(
+                            "change",
+                            {bubbles: true}
+                        )
+                    );
                 }
-
-                campo.value = valor;
-
-                campo.dispatchEvent(
-                    new Event(
-                        "input",
-                        {bubbles: true}
-                    )
-                );
-
-                campo.dispatchEvent(
-                    new Event(
-                        "change",
-                        {bubbles: true}
-                    )
-                );
-            });
+            );
             """,
             {
                 "qtEixos":
                     str(eixos),
 
                 "prMargemTransportadora":
-                    str(margem_empresa)
-                    .replace(".", ","),
+                    str(
+                        margem_empresa
+                    ).replace(
+                        ".",
+                        ","
+                    ),
 
                 "prIcms":
                     (
                         str(icms)
-                        .replace(".", ",")
+                        .replace(
+                            ".",
+                            ","
+                        )
                         if icms > 0
                         else ""
                     ),
 
                 "vlPesoTonelada":
                     f"{float(peso):.2f}"
-                    .replace(".", ",")
+                    .replace(
+                        ".",
+                        ","
+                    )
             }
         )
 
@@ -433,6 +542,7 @@ def cotar(
             driver,
             "calcular"
         ):
+
             raise RuntimeError(
                 "Botão Calcular não encontrado."
             )
@@ -446,21 +556,33 @@ def cotar(
             return d.execute_script(
                 r"""
                 const linhas =
-                    [...document.querySelectorAll("tr")];
+                    [
+                        ...document
+                        .querySelectorAll(
+                            "tr"
+                        )
+                    ];
 
                 const linha =
                     linhas.find(l => {
 
                         const texto =
-                            (l.innerText || "").trim();
+                            (
+                                l.innerText ||
+                                ""
+                            ).trim();
 
                         return (
                             texto.startsWith(
                                 "Granel Sólido"
-                            ) &&
+                            )
+                            &&
                             (
-                                texto.match(/R\$/g)
-                                || []
+                                texto.match(
+                                    /R\$/g
+                                )
+                                ||
+                                []
                             ).length >= 7
                         );
                     });
@@ -470,7 +592,10 @@ def cotar(
                 }
 
                 const texto =
-                    (linha.innerText || "").trim();
+                    (
+                        linha.innerText ||
+                        ""
+                    ).trim();
 
                 const valores =
                     texto.match(
@@ -524,7 +649,7 @@ def cotar(
         )
 
         # -------------------------------------------------
-        # PEDÁGIO POR TONELADA
+        # PEDÁGIO / TONELADA
         # -------------------------------------------------
 
         pedagio_t = (
@@ -569,6 +694,10 @@ def cotar(
             float(peso)
         )
 
+        # -------------------------------------------------
+        # RESULTADO
+        # -------------------------------------------------
+
         return {
 
             "origem":
@@ -578,11 +707,21 @@ def cotar(
                     "description"
                 ],
 
+            "origem_uf":
+                origem_resultado[
+                    "uf"
+                ],
+
             "destino":
                 destino_resultado[
                     "cidade"
                 ][
                     "description"
+                ],
+
+            "destino_uf":
+                destino_resultado[
+                    "uf"
                 ],
 
             "km":
@@ -640,6 +779,7 @@ st.title(
     "FortiPro | Formação de preço"
 )
 
+
 tab1, tab2, tab3 = st.tabs(
     [
         "V1 • Fiscal",
@@ -663,7 +803,9 @@ with tab1:
         "Dados conforme a NF enviada pela Inpasa."
     )
 
-    f1, f2, f3, f4 = st.columns(4)
+    f1, f2, f3, f4 = st.columns(
+        4
+    )
 
     f1.metric(
         "NCM",
@@ -686,7 +828,7 @@ with tab1:
     )
 
     st.caption(
-        "* Conforme enquadramento legal aplicável às vendas abrangidas pela suspensão."
+        "* Conforme enquadramento legal aplicável à operação."
     )
 
     st.divider()
@@ -703,7 +845,7 @@ with tab1:
     ] = forti_fob
 
     st.info(
-        "O ICMS será informado na V2 porque depende da operação e será aplicado na cotação do MaisFrete."
+        "O ICMS é informado na V2 porque depende da operação de transporte."
     )
 
 
@@ -717,7 +859,13 @@ with tab2:
         "Cotação automática no MaisFrete"
     )
 
-    c1, c2 = st.columns(2)
+    st.caption(
+        "Digite somente as cidades. O estado será identificado automaticamente pelo MaisFrete."
+    )
+
+    c1, c2 = st.columns(
+        2
+    )
 
     with c1:
 
@@ -726,12 +874,6 @@ with tab2:
             "Uberlândia"
         )
 
-        uf_o = st.text_input(
-            "UF origem",
-            "MG",
-            max_chars=2
-        ).upper()
-
     with c2:
 
         destino = st.text_input(
@@ -739,14 +881,8 @@ with tab2:
             "Viçosa"
         )
 
-        uf_d = st.text_input(
-            "UF destino",
-            "MG",
-            max_chars=2
-        ).upper()
-
     # -----------------------------------------------------
-    # EIXOS AUTOMÁTICOS
+    # EIXOS
     # -----------------------------------------------------
 
     eixos = st.selectbox(
@@ -761,7 +897,9 @@ with tab2:
             8,
             9
         ],
-        index=5
+        index=5,
+        format_func=lambda x:
+            f"{x} eixos"
     )
 
     peso = CAPACIDADE_EIXOS[
@@ -769,15 +907,17 @@ with tab2:
     ]
 
     st.info(
-        f"Capacidade automática considerada: "
-        f"{peso:.0f} toneladas para {eixos} eixos."
+        f"Capacidade considerada automaticamente: "
+        f"{peso:.0f} toneladas."
     )
 
     # -----------------------------------------------------
-    # MARGEM / ICMS / SEGURANÇA
+    # AJUSTES
     # -----------------------------------------------------
 
-    a, b, c = st.columns(3)
+    a, b, c = st.columns(
+        3
+    )
 
     with a:
 
@@ -798,9 +938,8 @@ with tab2:
             value=0.0,
             step=1.0,
             help=(
-                "Informe a alíquota aplicável "
-                "à operação. Deixe 0 quando "
-                "não houver ICMS a informar."
+                "Informe conforme a operação. "
+                "Deixe 0 quando não aplicável."
             )
         )
 
@@ -832,9 +971,7 @@ with tab2:
 
                 resultado = cotar(
                     origem,
-                    uf_o,
                     destino,
-                    uf_d,
                     eixos,
                     peso,
                     margem_empresa,
@@ -866,6 +1003,10 @@ with tab2:
         "resultado_logistica"
     )
 
+    # -----------------------------------------------------
+    # RESULTADO LOGÍSTICO
+    # -----------------------------------------------------
+
     if resultado:
 
         st.success(
@@ -873,7 +1014,9 @@ with tab2:
             f'{resultado["destino"]}'
         )
 
-        x1, x2, x3, x4 = st.columns(4)
+        x1, x2, x3, x4 = st.columns(
+            4
+        )
 
         x1.metric(
             "Distância",
@@ -907,7 +1050,9 @@ with tab2:
             )
         )
 
-        y1, y2, y3 = st.columns(3)
+        y1, y2, y3 = st.columns(
+            3
+        )
 
         y1.metric(
             "Pedágio",
@@ -936,7 +1081,9 @@ with tab2:
             )
         )
 
-        z1, z2, z3 = st.columns(3)
+        z1, z2, z3 = st.columns(
+            3
+        )
 
         z1.metric(
             "Margem segurança / t",
@@ -968,9 +1115,11 @@ with tab2:
         st.caption(
             f"{eixos} eixos • "
             f"{peso:.0f} t • "
-            f"margem MaisFrete {margem_empresa:.0f}% • "
             f"ICMS {icms:.1f}% • "
-            f"margem segurança {margem_seguranca:.1f}%"
+            f"margem MaisFrete "
+            f"{margem_empresa:.0f}% • "
+            f"margem segurança "
+            f"{margem_seguranca:.1f}%"
         )
 
 
@@ -984,20 +1133,32 @@ with tab3:
         "FortiPro posto na propriedade"
     )
 
-    forti_fob_final = st.session_state.get(
-        "forti_fob",
-        1445.0
+    forti_fob_final = (
+        st.session_state.get(
+            "forti_fob",
+            1445.0
+        )
     )
 
-    frete_final_t = st.session_state.get(
-        "frete_final_t"
+    frete_final_t = (
+        st.session_state.get(
+            "frete_final_t"
+        )
     )
+
+    # -----------------------------------------------------
+    # AINDA NÃO CALCULOU FRETE
+    # -----------------------------------------------------
 
     if frete_final_t is None:
 
         st.warning(
             "Calcule primeiro a logística na V2 para obter o preço posto na propriedade."
         )
+
+    # -----------------------------------------------------
+    # JÁ POSSUI FRETE
+    # -----------------------------------------------------
 
     else:
 
@@ -1006,7 +1167,9 @@ with tab3:
             frete_final_t
         )
 
-        r1, r2, r3 = st.columns(3)
+        r1, r2, r3 = st.columns(
+            3
+        )
 
         r1.metric(
             "FOB FortiPro",
@@ -1041,5 +1204,178 @@ with tab3:
         )
 
         st.caption(
-            "FortiPro posto = preço FOB + frete logístico final por tonelada."
+            "FortiPro posto = preço FOB + logística final por tonelada."
+        )
+
+        # =================================================
+        # COMPARAÇÃO COM FARELO DE SOJA
+        # =================================================
+
+        st.divider()
+
+        st.subheader(
+            "Comparativo de proteína posta"
+        )
+
+        st.caption(
+            "Comparação feita entre os dois produtos já considerados na propriedade."
+        )
+
+        c1, c2 = st.columns(
+            2
+        )
+
+        with c1:
+
+            st.markdown(
+                "### FortiPro"
+            )
+
+            pb_forti = st.number_input(
+                "PB FortiPro (%)",
+                min_value=0.1,
+                max_value=100.0,
+                value=35.0,
+                step=0.5
+            )
+
+        with c2:
+
+            st.markdown(
+                "### Farelo de soja"
+            )
+
+            soja_posto = st.number_input(
+                "Farelo de soja posto (R$/t)",
+                min_value=0.0,
+                value=2130.0,
+                step=10.0
+            )
+
+            pb_soja = st.number_input(
+                "PB Farelo de soja (%)",
+                min_value=0.1,
+                max_value=100.0,
+                value=46.0,
+                step=0.5
+            )
+
+        # -------------------------------------------------
+        # KG PB / TONELADA
+        # -------------------------------------------------
+
+        kg_pb_forti = (
+            pb_forti *
+            10
+        )
+
+        kg_pb_soja = (
+            pb_soja *
+            10
+        )
+
+        # -------------------------------------------------
+        # CUSTO / KG PB
+        # -------------------------------------------------
+
+        custo_pb_forti = (
+            forti_posto /
+            kg_pb_forti
+            if kg_pb_forti
+            else 0
+        )
+
+        custo_pb_soja = (
+            soja_posto /
+            kg_pb_soja
+            if kg_pb_soja
+            else 0
+        )
+
+        # -------------------------------------------------
+        # DIFERENÇA
+        # -------------------------------------------------
+
+        diferenca_pct = (
+            (
+                custo_pb_forti /
+                custo_pb_soja
+                -
+                1
+            )
+            *
+            100
+            if custo_pb_soja
+            else 0
+        )
+
+        # -------------------------------------------------
+        # RESULTADOS
+        # -------------------------------------------------
+
+        p1, p2, p3, p4 = st.columns(
+            4
+        )
+
+        p1.metric(
+            "FortiPro posto",
+            br_money(
+                forti_posto
+            )
+        )
+
+        p2.metric(
+            "Farelo posto",
+            br_money(
+                soja_posto
+            )
+        )
+
+        p3.metric(
+            "Custo/kg PB FortiPro",
+            br_money(
+                custo_pb_forti
+            )
+        )
+
+        p4.metric(
+            "Custo/kg PB soja",
+            br_money(
+                custo_pb_soja
+            )
+        )
+
+        # -------------------------------------------------
+        # INTERPRETAÇÃO
+        # -------------------------------------------------
+
+        if diferenca_pct < 0:
+
+            st.success(
+                f"O FortiPro está "
+                f"{abs(diferenca_pct):.1f}% "
+                "mais barato por kg de proteína bruta "
+                "que o farelo de soja, considerando "
+                "os preços postos informados."
+            )
+
+        elif diferenca_pct > 0:
+
+            st.warning(
+                f"O FortiPro está "
+                f"{diferenca_pct:.1f}% "
+                "mais caro por kg de proteína bruta "
+                "que o farelo de soja, considerando "
+                "os preços postos informados."
+            )
+
+        else:
+
+            st.info(
+                "FortiPro e farelo de soja possuem "
+                "o mesmo custo por kg de proteína bruta."
+            )
+
+        st.caption(
+            "Custo/kg PB = preço posto da tonelada ÷ quantidade de proteína bruta presente em 1 tonelada."
         )
