@@ -1617,13 +1617,110 @@ with tab3:
             )
 
 
+              # =================================================
+        # MARGEM COMPETITIVA / PONTO DE EQUILÍBRIO
+        # =================================================
+
+        st.divider()
+
+        st.markdown(
+            "### Margem competitiva do FortiPro"
+        )
+
+        # Preço posto máximo do FortiPro para empatar
+        # com o farelo de soja em custo por kg de PB
+        preco_equilibrio_forti = (
+            custo_pb_soja *
+            kg_pb_forti
+        )
+
+        margem_competitiva = (
+            preco_equilibrio_forti -
+            forti_posto
+        )
+
+        margem_competitiva_pct = (
+            margem_competitiva /
+            forti_posto *
+            100
+            if forti_posto
+            else 0.0
+        )
+
+        m1, m2, m3 = st.columns(
+            3
+        )
+
+        m1.metric(
+            "FortiPro posto atual",
+            br_money(
+                forti_posto
+            )
+        )
+
+        m2.metric(
+            "Preço posto de equilíbrio",
+            br_money(
+                preco_equilibrio_forti
+            )
+        )
+
+        if margem_competitiva > 0:
+
+            m3.metric(
+                "Margem competitiva",
+                br_money(
+                    margem_competitiva
+                ),
+                f"{margem_competitiva_pct:.1f}% de folga"
+            )
+
+            st.success(
+                f"O preço posto do FortiPro poderia aumentar "
+                f"aproximadamente {br_money(margem_competitiva)} "
+                f"por tonelada antes de igualar o custo por kg "
+                f"de proteína bruta do farelo de soja."
+            )
+
+        elif margem_competitiva < 0:
+
+            m3.metric(
+                "Ajuste necessário",
+                br_money(
+                    abs(margem_competitiva)
+                ),
+                "acima do equilíbrio",
+                delta_color="inverse"
+            )
+
+            st.warning(
+                f"O FortiPro precisaria reduzir seu preço posto "
+                f"em aproximadamente "
+                f"{br_money(abs(margem_competitiva))} por tonelada "
+                f"para igualar o custo por kg de proteína bruta "
+                f"do farelo de soja."
+            )
+
+        else:
+
+            m3.metric(
+                "Margem competitiva",
+                br_money(0),
+                "No ponto de equilíbrio"
+            )
+
+            st.info(
+                "O FortiPro está exatamente no ponto de equilíbrio "
+                "com o farelo de soja em custo por kg de proteína bruta."
+            )
+
+
         # =================================================
         # AVISO TÉCNICO
         # =================================================
 
         st.caption(
-            "Equivalência calculada exclusivamente com base em "
-            "proteína bruta (PB). Não representa equivalência "
-            "nutricional completa ou recomendação de substituição "
-            "na dieta."
+            "As comparações consideram exclusivamente proteína bruta (PB). "
+            "Não representam equivalência nutricional completa ou "
+            "recomendação de substituição na dieta."
         )
