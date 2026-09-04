@@ -1,6 +1,7 @@
 import os
 import re
 import unicodedata
+import base64
 
 import streamlit as st
 
@@ -19,7 +20,7 @@ from selenium.webdriver.support import expected_conditions as EC
 URL = "https://consulta.maisfrete.com.br/exe_consulta_frete_minimo.php"
 
 st.set_page_config(
-    page_title="FortiPro | Preço Posto",
+    page_title="FortiPro | Inteligência Comercial",
     page_icon="🚚",
     layout="wide"
 )
@@ -89,6 +90,15 @@ def normalizar(s):
         )
         if unicodedata.category(c) != "Mn"
     ).lower().strip()
+
+
+def imagem_base64(caminho):
+
+    with open(caminho, "rb") as arquivo:
+
+        return base64.b64encode(
+            arquivo.read()
+        ).decode()
 
 
 # =========================================================
@@ -754,79 +764,55 @@ def cotar(
 
 
 # =========================================================
-# CABEÇALHO
+# CABEÇALHO / BANNER GERMINARE
 # =========================================================
 
 imagem_banner = imagem_base64(
-
     "logo_germinare.jpeg"
-
 )
 
 st.markdown(
-
     f"""
-
     <style>
 
     .hero-germinare {{
-
         width: 100%;
-
         height: 280px;
-
         border-radius: 18px;
 
         background-image:
-
             linear-gradient(
-
-                rgba(0,0,0,0.15),
-
-                rgba(0,0,0,0.55)
-
+                rgba(0, 0, 0, 0.08),
+                rgba(0, 0, 0, 0.55)
             ),
-
             url("data:image/jpeg;base64,{imagem_banner}");
 
         background-size: cover;
-
         background-position: center;
 
         display: flex;
-
         align-items: flex-end;
 
         padding: 35px 40px;
-
-        margin-bottom: 30px;
+        margin-bottom: 28px;
 
         box-sizing: border-box;
-
+        overflow: hidden;
     }}
 
     .hero-germinare h1 {{
-
         color: white;
-
         font-size: 42px;
-
+        line-height: 1.1;
         margin: 0;
-
         font-weight: 700;
-
     }}
 
     .hero-germinare p {{
-
         color: #e5e5e5;
-
         font-size: 17px;
-
-        margin-top: 8px;
-
+        margin-top: 10px;
         margin-bottom: 0;
-
     }}
 
     </style>
@@ -836,26 +822,20 @@ st.markdown(
         <div>
 
             <h1>
-
                 FortiPro | Inteligência Comercial
-
             </h1>
 
             <p>
-
                 Análise fiscal, logística e competitividade econômica.
-
             </p>
 
         </div>
 
     </div>
-
     """,
-
     unsafe_allow_html=True
-
 )
+
 
 # =========================================================
 # ABAS
@@ -1708,7 +1688,7 @@ with tab3:
             )
 
 
-              # =================================================
+        # =================================================
         # MARGEM COMPETITIVA / PONTO DE EQUILÍBRIO
         # =================================================
 
@@ -1718,8 +1698,6 @@ with tab3:
             "### Margem competitiva do FortiPro"
         )
 
-        # Preço posto máximo do FortiPro para empatar
-        # com o farelo de soja em custo por kg de PB
         preco_equilibrio_forti = (
             custo_pb_soja *
             kg_pb_forti
