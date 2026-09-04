@@ -1034,10 +1034,6 @@ with tab2:
             f'{resultado["destino"]}'
         )
 
-        # -------------------------------------------------
-        # PRIMEIRA LINHA
-        # -------------------------------------------------
-
         x1, x2, x3, x4 = st.columns(
             4
         )
@@ -1075,10 +1071,6 @@ with tab2:
         )
 
 
-        # -------------------------------------------------
-        # SEGUNDA LINHA
-        # -------------------------------------------------
-
         y1, y2, y3 = st.columns(
             3
         )
@@ -1110,10 +1102,6 @@ with tab2:
             )
         )
 
-
-        # -------------------------------------------------
-        # TERCEIRA LINHA
-        # -------------------------------------------------
 
         z1, z2, z3 = st.columns(
             3
@@ -1274,6 +1262,11 @@ with tab3:
             frete_final_t
         )
 
+        diferenca_preco_posto = (
+            soja_posto -
+            forti_posto
+        )
+
 
         # =================================================
         # KG DE PROTEÍNA POR TONELADA
@@ -1337,8 +1330,8 @@ with tab3:
             "### Preços postos"
         )
 
-        p1, p2, p3 = st.columns(
-            3
+        p1, p2, p3, p4 = st.columns(
+            4
         )
 
         p1.metric(
@@ -1359,6 +1352,13 @@ with tab3:
             "Farelo de soja posto",
             br_money(
                 soja_posto
+            )
+        )
+
+        p4.metric(
+            "Diferença de preço / t",
+            br_money(
+                abs(diferenca_preco_posto)
             )
         )
 
@@ -1435,6 +1435,8 @@ with tab3:
             "Custo/kg PB = preço posto da tonelada ÷ "
             "quantidade de proteína bruta presente em 1 tonelada."
         )
+
+
         # =================================================
         # ECONOMIA POR EQUIVALÊNCIA DE PROTEÍNA BRUTA
         # =================================================
@@ -1453,10 +1455,14 @@ with tab3:
             key="quantidade_soja_equivalencia"
         )
 
-        # Quantidade de FortiPro necessária para fornecer
-        # a mesma quantidade de proteína bruta da soja
+
+        # =================================================
+        # FATOR DE EQUIVALÊNCIA
+        # =================================================
+
         fator_equivalencia = (
-            pb_soja / pb_forti
+            pb_soja /
+            pb_forti
             if pb_forti
             else 0
         )
@@ -1466,7 +1472,11 @@ with tab3:
             fator_equivalencia
         )
 
-        # Custo total dos dois cenários
+
+        # =================================================
+        # CUSTOS TOTAIS
+        # =================================================
+
         custo_total_soja = (
             quantidade_soja *
             soja_posto
@@ -1477,13 +1487,16 @@ with tab3:
             forti_posto
         )
 
-        # Economia em reais
+
+        # =================================================
+        # ECONOMIA
+        # =================================================
+
         economia_total = (
             custo_total_soja -
             custo_total_forti
         )
 
-        # Economia percentual
         economia_percentual = (
             economia_total /
             custo_total_soja *
@@ -1492,8 +1505,9 @@ with tab3:
             else 0
         )
 
+
         # =================================================
-        # MOSTRA EQUIVALÊNCIA
+        # EQUIVALÊNCIA
         # =================================================
 
         st.info(
@@ -1504,7 +1518,14 @@ with tab3:
             f"({pb_forti:.1f}% PB)."
         )
 
-        e1, e2, e3 = st.columns(3)
+
+        # =================================================
+        # RESULTADOS DA EQUIVALÊNCIA
+        # =================================================
+
+        e1, e2, e3 = st.columns(
+            3
+        )
 
         e1.metric(
             "Custo com Farelo de soja",
@@ -1519,6 +1540,11 @@ with tab3:
                 custo_total_forti
             )
         )
+
+
+        # =================================================
+        # SE FORTIPRO FOR MAIS BARATO
+        # =================================================
 
         if economia_total >= 0:
 
@@ -1539,6 +1565,11 @@ with tab3:
                 f"{br_money(economia_total)}."
             )
 
+
+        # =================================================
+        # SE FORTIPRO FOR MAIS CARO
+        # =================================================
+
         else:
 
             e3.metric(
@@ -1555,7 +1586,14 @@ with tab3:
                 f"a mais que o farelo de soja."
             )
 
+
+        # =================================================
+        # AVISO TÉCNICO
+        # =================================================
+
         st.caption(
-            "Equivalência calculada exclusivamente com base em proteína bruta (PB). "
-            "Não representa equivalência nutricional completa ou recomendação de substituição na dieta."
+            "Equivalência calculada exclusivamente com base em "
+            "proteína bruta (PB). Não representa equivalência "
+            "nutricional completa ou recomendação de substituição "
+            "na dieta."
         )
