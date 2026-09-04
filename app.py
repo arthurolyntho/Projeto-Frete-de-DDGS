@@ -599,14 +599,6 @@ def cotar(
         # VALORES RETORNADOS
         # =================================================
 
-        # 0 = KM por eixo
-        # 1 = carga/descarga
-        # 2 = frete mínimo total
-        # 3 = frete mínimo / t
-        # 4 = frete empresa total
-        # 5 = frete empresa / t
-        # 6 = pedágio
-
         frete_minimo = br_to_float(
             valores[2]
         )
@@ -629,7 +621,7 @@ def cotar(
 
 
         # =================================================
-        # PEDÁGIO POR TONELADA
+        # PEDÁGIO / TONELADA
         # =================================================
 
         pedagio_t = (
@@ -1267,6 +1259,14 @@ with tab3:
             forti_posto
         )
 
+        diferenca_preco_posto_pct = (
+            diferenca_preco_posto /
+            soja_posto *
+            100
+            if soja_posto
+            else 0.0
+        )
+
 
         # =================================================
         # KG DE PROTEÍNA POR TONELADA
@@ -1303,7 +1303,7 @@ with tab3:
 
 
         # =================================================
-        # DIFERENÇA PERCENTUAL
+        # DIFERENÇA PERCENTUAL DA PROTEÍNA
         # =================================================
 
         diferenca_pct = (
@@ -1355,12 +1355,41 @@ with tab3:
             )
         )
 
-        p4.metric(
-            "Diferença de preço / t",
-            br_money(
-                abs(diferenca_preco_posto)
+
+        # =================================================
+        # DIFERENÇA DE PREÇO POSTO
+        # =================================================
+
+        if diferenca_preco_posto > 0:
+
+            p4.metric(
+                "Economia no preço posto / t",
+                br_money(
+                    diferenca_preco_posto
+                ),
+                f"{diferenca_preco_posto_pct:.1f}% mais barato",
+                delta_color="normal"
             )
-        )
+
+        elif diferenca_preco_posto < 0:
+
+            p4.metric(
+                "Diferença no preço posto / t",
+                br_money(
+                    abs(diferenca_preco_posto)
+                ),
+                f"{abs(diferenca_preco_posto_pct):.1f}% mais caro",
+                delta_color="inverse"
+            )
+
+        else:
+
+            p4.metric(
+                "Diferença no preço posto / t",
+                br_money(0),
+                "0,0%"
+            )
+
 
         st.caption(
             "Preço posto = preço do produto + frete final por tonelada."
@@ -1577,7 +1606,8 @@ with tab3:
                 br_money(
                     abs(economia_total)
                 ),
-                f"{abs(economia_percentual):.1f}% mais caro"
+                f"{abs(economia_percentual):.1f}% mais caro",
+                delta_color="inverse"
             )
 
             st.warning(
