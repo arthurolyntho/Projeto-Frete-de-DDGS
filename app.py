@@ -757,51 +757,104 @@ def cotar(
 # CABEÇALHO
 # =========================================================
 
+imagem_banner = imagem_base64(
+
+    "logo_germinare.jpeg"
+
+)
+
 st.markdown(
-    """
+
+    f"""
+
     <style>
-    .hero-germinare {
+
+    .hero-germinare {{
+
         width: 100%;
-        height: 260px;
+
+        height: 280px;
+
         border-radius: 18px;
+
         background-image:
+
             linear-gradient(
-                rgba(0,0,0,0.10),
-                rgba(0,0,0,0.35)
+
+                rgba(0,0,0,0.15),
+
+                rgba(0,0,0,0.55)
+
             ),
-            url("app/static/logo_germinare.jpeg");
+
+            url("data:image/jpeg;base64,{imagem_banner}");
+
         background-size: cover;
+
         background-position: center;
+
         display: flex;
+
         align-items: flex-end;
-        padding: 32px 40px;
-        margin-bottom: 28px;
+
+        padding: 35px 40px;
+
+        margin-bottom: 30px;
+
         box-sizing: border-box;
-    }
 
-    .hero-germinare h1 {
+    }}
+
+    .hero-germinare h1 {{
+
         color: white;
-        font-size: 42px;
-        margin: 0;
-        font-weight: 700;
-    }
 
-    .hero-germinare p {
-        color: #dddddd;
+        font-size: 42px;
+
+        margin: 0;
+
+        font-weight: 700;
+
+    }}
+
+    .hero-germinare p {{
+
+        color: #e5e5e5;
+
         font-size: 17px;
+
         margin-top: 8px;
+
         margin-bottom: 0;
-    }
+
+    }}
+
     </style>
 
     <div class="hero-germinare">
+
         <div>
-            <h1>FortiPro | Inteligência Comercial</h1>
-            <p>Análise fiscal, logística e competitividade econômica.</p>
+
+            <h1>
+
+                FortiPro | Inteligência Comercial
+
+            </h1>
+
+            <p>
+
+                Análise fiscal, logística e competitividade econômica.
+
+            </p>
+
         </div>
+
     </div>
+
     """,
+
     unsafe_allow_html=True
+
 )
 
 # =========================================================
